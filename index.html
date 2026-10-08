@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKUST BibExtractor IR - Scholarly CV to BibTeX Converter</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for XLSX parsing & export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PDF.js for client-side PDF text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Mammoth.js for Word DOCX text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        hkust: {
+                            navy: '#003366',
+                            gold: '#C69214',
+                            blue: '#005596',
+                            light: '#F4F7FA',
+                            accent: '#E0A100'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .code-font {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col bg-slate-50 text-slate-800 antialiased selection:bg-hkust-gold selection:text-hkust-navy">
+    <!-- Top Navigation Bar -->
+    <header class="bg-hkust-navy text-white shadow-md sticky top-0 z-30">
+        <div class="w-full px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-hkust-gold text-hkust-navy p-2 rounded-lg font-bold text-xl flex items-center justify-center w-10 h-10 shadow">
+                    <i data-lucide="book-open-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide flex items-center gap-2">
+                        <span>HKUST BibExtractor</span>
+                    </h1>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="window.openSettingsModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition flex items-center space-x-1.5 border border-slate-600 shadow">
+                    <i data-lucide="key" class="w-4 h-4 text-hkust-gold"></i>
+                    <span>API Settings</span>
+                    <span id="apiKeyStatusBadge" class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                </button>
+                <!-- Multi-Format Export Dropdown Menu -->
+                <div class="relative inline-block text-left" id="export-dropdown-wrapper">
+                    <button onclick="window.toggleExportMenu()" class="px-3 py-1.5 bg-hkust-gold hover:bg-amber-500 text-hkust-navy font-bold text-xs rounded-lg transition flex items-center space-x-1.5 shadow">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Export Data</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 ml-0.5"></i>
+                    </button>
+                    <div id="export-menu" class="hidden absolute right-0 mt-2 w-56 rounded-lg shadow-xl bg-white ring-1 ring-slate-900/10 z-50 text-slate-700 divide-y divide-slate-100 overflow-hidden">
+                        <div class="py-1.5">
+                            <div class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Export Extracted Records</div>
+                            <button onclick="window.downloadBibTeXFile(); window.closeExportMenu();" class="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-100 flex items-center space-x-2 transition">
+                                <i data-lucide="book-open" class="w-4 h-4 text-amber-600"></i>
+                                <span class="font-medium text-slate-700">BibTeX File (.bib)</span>
+                            </button>
+                            <button onclick="window.exportRecords('xlsx'); window.closeExportMenu();" class="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-100 flex items-center space-x-2 transition">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+                                <span class="font-medium text-slate-700">Excel Format (.xlsx)</span>
+                            </button>
+                            <button onclick="window.exportRecords('csv'); window.closeExportMenu();" class="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-100 flex items-center space-x-2 transition">
+                                <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+                                <span class="font-medium text-slate-700">CSV Document (.csv)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none"></div>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        <!-- Navigation Tabs Bar -->
+        <div class="border-b border-slate-200 flex justify-between items-center">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button id="tab-btn-input" onclick="window.switchTab('input')" class="border-hkust-gold text-hkust-navy whitespace-nowrap py-3 px-1 border-b-2 font-semibold text-sm flex items-center space-x-2">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                    <span>1. Upload File / Text</span>
+                </button>
+                <button id="tab-btn-metadata" onclick="window.switchTab('metadata')" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2">
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                    <span>2. Review Extracted Records</span>
+                    <span id="recordCountBadge" class="ml-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full font-bold">0</span>
+                </button>
+                <button id="tab-btn-bibtex" onclick="window.switchTab('bibtex')" class="border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm flex items-center space-x-2">
+                    <i data-lucide="code" class="w-4 h-4"></i>
+                    <span>3. BibTeX Code</span>
+                </button>
+            </nav>
+            <div class="text-xs text-slate-500 flex items-center space-x-2">
+                <span id="db-status" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                    <span id="db-status-dot" class="w-2 h-2 mr-1.5 bg-slate-400 rounded-full"></span>
+                    <span id="db-status-text">No records loaded</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- TAB 1: FILE UPLOAD & CONFIGURATION -->
+        <div id="tab-content-input" class="space-y-6">
+            <div class="grid grid-cols-1 gap-6">
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-3 h-3 bg-hkust-blue rounded-full"></span>
+                            <h2 class="font-bold text-slate-800 text-base">Publication Lists</h2>
+                        </div>
+                        <button onclick="window.clearInput()" class="text-xs text-slate-400 hover:text-red-600 transition flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            Clear Input
+                        </button>
+                    </div>
+                    <p class="text-xs text-slate-500">Paste publication lists in any standard citation format (APA, IEEE, ACM, Chicago) or drop CV files below.</p>
+                    <textarea id="rawCVInput" class="w-full min-h-[350px] p-4 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-hkust-blue focus:border-hkust-blue text-slate-800 code-font text-xs sm:text-sm leading-relaxed resize-y placeholder:text-slate-400 shadow-inner" placeholder="Paste publication lists here...
+
+Examples:
+1. Li, H., Yang, Q., Ma, S., Zhao, R., Ji, X. (2025). “RoboSpike: Fully Utilizing the Heterogeneous System With Subcallback Scheduling in ROS 2”, IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 44, 2897-2910
+2. Liu, F., Zheng, H., Ma, S., Zhang, W., Liu, X., Chua, Y., Shi, L., Zhao, R. (2024). Advancing brain-inspired computing with hybrid neural networks. National Science Review, 11(5), nwae066.
+3. Wang, G., Ma, S., Wu, Y., Pei, J., Zhao, R., Shi, L. (2021). End-to-end implementation of various hybrid neural networks on a cross-paradigm neuromorphic chip. Frontiers in neuroscience, 15, 615279."></textarea>
+
+                    <!-- Drag and Drop File Upload Area -->
+                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-hkust-blue rounded-lg p-5 text-center cursor-pointer transition bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center group">
+                        <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt,.md,.bib,.ris" onchange="window.handleFileSelect(event)">
+                        <i data-lucide="file-spreadsheet" class="w-8 h-8 text-slate-400 group-hover:text-hkust-blue mb-1.5 transition-colors"></i>
+                        <p class="text-xs font-semibold text-slate-700">Click to upload or drag & drop CV document here</p>
+                        <p class="text-[11px] text-slate-400 mt-1">Supports PDF, Word (.docx), Plain Text (.txt, .md, .bib)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Execution Bar -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center justify-end">
+                <button onclick="window.processCVInput()" id="parseBtn" class="px-6 py-3 bg-hkust-navy hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition shadow-lg flex items-center justify-center space-x-2">
+                    <i data-lucide="wand-2" class="w-4 h-4 text-hkust-gold"></i>
+                    <span>Generate BibTeX</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 2: REVIEW EXTRACTED RECORDS QUEUE -->
+        <div id="tab-content-metadata" class="hidden space-y-6">
+            <!-- Stats Overview Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Extracted</p>
+                        <p id="stat-total" class="text-2xl font-extrabold text-slate-800 mt-1">0</p>
+                    </div>
+                    <div class="p-3 bg-slate-100 rounded-xl text-slate-600">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-l-emerald-600">
+                    <div>
+                        <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Valid BibTeX</p>
+                        <p id="stat-valid" class="text-2xl font-extrabold text-emerald-700 mt-1">0</p>
+                    </div>
+                    <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-l-amber-500">
+                    <div>
+                        <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Missing DOIs</p>
+                        <p id="stat-missing-doi" class="text-2xl font-extrabold text-amber-700 mt-1">0</p>
+                    </div>
+                    <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
+                        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-l-blue-600">
+                    <div>
+                        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Non-Indexed</p>
+                        <p id="stat-non-indexed" class="text-2xl font-extrabold text-blue-700 mt-1">0</p>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls & Filter Bar -->
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+                <div class="flex flex-col xl:flex-row gap-3 items-center justify-between">
+                    <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                        <div class="relative w-full sm:w-72">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+                            <input type="text" id="recordSearchInput" oninput="window.applyFilters()" placeholder="Search title, author, key..." class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hkust-blue">
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <label for="typeFilterSelect" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Document Type:</label>
+                            <select id="typeFilterSelect" onchange="window.applyFilters()" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-slate-800 focus:ring-2 focus:ring-hkust-blue font-semibold shadow-sm">
+                                <option value="all" selected>All Entry Types</option>
+                                <option value="article">@article</option>
+                                <option value="inproceedings">@inproceedings</option>
+                                <option value="book">@book</option>
+                                <option value="incollection">@incollection</option>
+                                <option value="misc">@misc</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 w-full xl:w-auto justify-end">
+                        <button onclick="window.addNewRecord()" class="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition flex items-center space-x-1">
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                            <span>Add Entry</span>
+                        </button>
+                        <button onclick="window.batchFormatKeys()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition flex items-center space-x-1">
+                            <i data-lucide="key" class="w-3.5 h-3.5 text-amber-600"></i>
+                            <span>Regenerate Keys</span>
+                        </button>
+                        <button onclick="window.clearAllRecords()" class="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition flex items-center space-x-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Clear Queue</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs gap-2">
+                    <div class="flex items-center space-x-2 text-slate-600">
+                        <input type="checkbox" id="select-all-cb" onchange="window.toggleSelectAll(this.checked)" class="rounded text-hkust-navy focus:ring-hkust-navy">
+                        <span class="font-medium"><span id="selected-count">0</span> items selected</span>
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        Double click any record row or use action buttons to edit publication metadata.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extracted Records Table -->
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden w-full">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 uppercase text-[11px] tracking-wider">
+                                <th class="p-3.5 w-10 text-center"><input type="checkbox" id="header-select-all" onchange="window.toggleSelectAll(this.checked)"></th>
+                                <th class="p-3.5 w-32 text-center whitespace-nowrap">Document Type</th>
+                                <th class="p-3.5 w-36 whitespace-nowrap">Citation Key</th>
+                                <th class="p-3.5 min-w-[320px]">Title &amp; Container</th>
+                                <th class="p-3.5 w-48">Authors</th>
+                                <th class="p-3.5 w-20 text-center whitespace-nowrap">Year</th>
+                                <th class="p-3.5 w-44">DOI / Identifiers</th>
+                                <th class="p-3.5 w-24 text-right whitespace-nowrap">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody" class="divide-y divide-slate-200">
+                            <!-- Dynamic rows rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyRecordsState" class="p-12 text-center flex flex-col items-center justify-center gap-2">
+                    <i data-lucide="inbox" class="w-10 h-10 text-slate-300 mb-1"></i>
+                    <p class="font-medium text-slate-600">No publication records extracted yet.</p>
+                    <p class="text-xs text-slate-400 max-w-sm">Paste raw CV text in Step 1 or upload a file to parse.</p>
+                </div>
+                <!-- Pagination Bar -->
+                <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+                    <div class="text-slate-500">
+                        Showing <span id="page-start-idx" class="font-semibold text-slate-700">0</span> to <span id="page-end-idx" class="font-semibold text-slate-700">0</span> of <span id="page-total-count" class="font-semibold text-slate-700">0</span> filtered items
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="window.changePage(-1)" id="btn-prev-page" disabled class="px-3 py-1 bg-white border border-slate-300 rounded font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
+                        <span id="pagination-controls" class="text-slate-600 font-medium">Page <span id="current-page-num">1</span> of <span id="total-pages-num">1</span></span>
+                        <button onclick="window.changePage(1)" id="btn-next-page" disabled class="px-3 py-1 bg-white border border-slate-300 rounded font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: BIBTEX CODE & EXPORT -->
+        <div id="tab-content-bibtex" class="hidden space-y-6">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-100 border-b border-slate-200">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
+                            <i data-lucide="file-code" class="w-4 h-4 text-hkust-blue"></i>
+                            <span id="bibtexFileName">publications_export.bib</span>
+                        </div>
+                        <span id="bibtexStatsBadge" class="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">0 records | 0 lines</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="window.copyBibTeXToClipboard()" class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition flex items-center space-x-1.5 shadow-sm">
+                            <i data-lucide="copy" class="w-3.5 h-3.5 text-hkust-blue"></i>
+                            <span>Copy BibTeX</span>
+                        </button>
+                        <button onclick="window.downloadBibTeXFile()" class="px-3.5 py-1.5 text-xs font-bold text-white bg-hkust-navy hover:bg-slate-800 rounded-lg shadow transition flex items-center space-x-1.5">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            <span>Download .bib File</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="relative bg-slate-900 p-5 overflow-auto min-h-[480px]">
+                    <pre id="bibtexCodeDisplay" class="code-font text-xs sm:text-sm text-emerald-400 leading-relaxed font-mono whitespace-pre selection:bg-hkust-gold selection:text-hkust-navy">% Extracted BibTeX code will appear here...</pre>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- EDIT RECORD MODAL -->
+    <div id="recordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
+            <div class="px-6 py-4 bg-hkust-navy text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-hkust-gold"></i>
+                    <h3 class="font-bold text-sm tracking-wide" id="modalTitle">Edit Publication Metadata</h3>
+                </div>
+                <button onclick="window.closeRecordModal()" class="text-slate-300 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-xs flex-1 custom-scrollbar">
+                <input type="hidden" id="editRecordIndex">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Entry Type</label>
+                        <select id="editEntryType" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue font-medium">
+                            <option value="article">@article (Journal Paper)</option>
+                            <option value="inproceedings">@inproceedings (Conference Proceedings)</option>
+                            <option value="book">@book (Authored Book)</option>
+                            <option value="incollection">@incollection (Book Chapter)</option>
+                            <option value="phdthesis">@phdthesis (PhD Dissertation)</option>
+                            <option value="techreport">@techreport (Technical Report)</option>
+                            <option value="misc">@misc (Presentation / Talk / Other)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Citation Key</label>
+                        <input type="text" id="editCitationKey" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 code-font focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Title</label>
+                    <textarea id="editTitle" rows="2" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue resize-y"></textarea>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Authors (Joined by 'and')</label>
+                    <input type="text" id="editAuthors" placeholder="Wang, G. and Ma, S. and Wu, Y." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    <p class="text-[10px] text-slate-400 mt-1">Format: <code class="text-hkust-blue font-semibold">LastName, FirstInitial. and LastName2, FirstInitial2.</code></p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Journal / Book Title / Proceedings</label>
+                        <input type="text" id="editContainer" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Publisher / Institution</label>
+                        <input type="text" id="editPublisher" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Year</label>
+                        <input type="text" id="editYear" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Volume</label>
+                        <input type="text" id="editVolume" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Issue / No.</label>
+                        <input type="text" id="editNumber" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Pages / Article ID</label>
+                        <input type="text" id="editPages" placeholder="2897-2910 or nwae066" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">DOI Identifier</label>
+                        <input type="text" id="editDoi" placeholder="10.3389/fnins.2021..." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">URL Resolver</label>
+                        <input type="text" id="editUrl" placeholder="https://..." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Note / Context</label>
+                    <input type="text" id="editNote" placeholder="Additional notes" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="window.closeRecordModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-lg transition">Cancel</button>
+                <button onclick="window.saveRecordModal()" class="px-4 py-2 text-xs font-bold text-white bg-hkust-navy hover:bg-slate-800 rounded-lg shadow transition">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div class="px-6 py-4 bg-hkust-navy text-white flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="key" class="w-5 h-5 text-hkust-gold"></i>
+                    <h3 class="font-bold text-sm tracking-wide">Gemini API Configuration</h3>
+                </div>
+                <button onclick="window.closeSettingsModal()" class="text-slate-300 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-xs">
+                <p class="text-slate-600 leading-relaxed">
+                    By default, this tool can use local heuristic parsing or a provided Gemini API Key for semantic recognition.
+                </p>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-700 block">Custom Gemini API Key (Optional)</label>
+                    <input type="password" id="customApiKeyInput" placeholder="AIzaSy..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-slate-700 block">Target Gemini Model</label>
+                    <input type="text" value="gemini-2.5-flash" disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 cursor-not-allowed">
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="window.saveSettings()" class="px-4 py-2 text-xs font-bold text-white bg-hkust-navy hover:bg-slate-800 rounded-lg shadow transition">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROGRESS MODAL -->
+    <div id="modal-progress" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center space-y-4 border border-slate-200">
+            <div class="w-12 h-12 bg-hkust-navy/10 text-hkust-navy rounded-full flex items-center justify-center mx-auto">
+                <i data-lucide="cpu" class="w-6 h-6 animate-pulse"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 text-base" id="progress-title">Processing</h3>
+                <p class="text-xs text-slate-500 mt-1" id="loadingProgressMsg">Analyzing citation structure...</p>
+            </div>
+            <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                <div id="progress-bar" class="bg-hkust-navy h-3 rounded-full transition-all duration-300 w-1/3 animate-pulse"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            records: [],
+            selectedIndices: new Set(),
+            activeTab: 'input',
+            customApiKey: '',
+            filterQuery: '',
+            filterType: 'all',
+            currentPage: 1,
+            pageSize: 10
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.pdfjsLib) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            }
+            const savedKey = localStorage.getItem('bibextractor_custom_key');
+            if (savedKey) {
+                state.customApiKey = savedKey;
+                document.getElementById('customApiKeyInput').value = savedKey;
+            }
+            setupDragAndDrop();
+            renderRecordsTable();
+            updateBibTeXView();
+            lucide.createIcons();
+        });
+
+        function switchTab(tabId) {
+            state.activeTab = tabId;
+            const tabs = ['input', 'metadata', 'bibtex'];
+            tabs.forEach(t => {
+                const content = document.getElementById(`tab-content-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (content) content.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('border-hkust-gold', 'text-hkust-navy', 'font-semibold');
+                    btn.classList.add('border-transparent', 'text-slate-500', 'font-medium');
+                }
+            });
+            const activeContent = document.getElementById(`tab-content-${tabId}`);
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (activeContent) activeContent.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.classList.add('border-hkust-gold', 'text-hkust-navy', 'font-semibold');
+                activeBtn.classList.remove('border-transparent', 'text-slate-500', 'font-medium');
+            }
+            if (tabId === 'bibtex') updateBibTeXView();
+            lucide.createIcons();
+        }
+        window.switchTab = switchTab;
+
+        function toggleExportMenu() {
+            const menu = document.getElementById('export-menu');
+            menu.classList.toggle('hidden');
+        }
+        window.toggleExportMenu = toggleExportMenu;
+
+        function closeExportMenu() {
+            const menu = document.getElementById('export-menu');
+            if (menu) menu.classList.add('hidden');
+        }
+        window.closeExportMenu = closeExportMenu;
+
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('export-dropdown-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                closeExportMenu();
+            }
+        });
+
+        function clearInput() {
+            document.getElementById('rawCVInput').value = '';
+            showToast('Input area cleared.', 'slate');
+        }
+        window.clearInput = clearInput;
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            if (!dropZone) return;
+            dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
+            ['dragenter', 'dragover'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add('border-hkust-blue', 'bg-slate-100');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('border-hkust-blue', 'bg-slate-100');
+                }, false);
+            });
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                if (dt.files.length) handleFile(dt.files[0]);
+            });
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (files.length) handleFile(files[0]);
+        }
+        window.handleFileSelect = handleFileSelect;
+
+        async function handleFile(file) {
+            showToast(`Reading document: ${file.name}...`, 'info');
+            const ext = file.name.split('.').pop().toLowerCase();
+            try {
+                if (['txt', 'md', 'bib', 'ris'].includes(ext)) {
+                    const text = await file.text();
+                    document.getElementById('rawCVInput').value = text;
+                    showToast('Document text loaded successfully!', 'success');
+                } else if (ext === 'pdf') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfText = await extractTextFromPDF(arrayBuffer);
+                    document.getElementById('rawCVInput').value = pdfText;
+                    showToast('Extracted text from PDF document successfully!', 'success');
+                } else if (ext === 'docx') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+                    document.getElementById('rawCVInput').value = result.value;
+                    showToast('Extracted text from DOCX document successfully!', 'success');
+                } else {
+                    showToast('Unsupported file type. Please upload PDF, DOCX, TXT, or BIB.', 'error');
+                }
+            } catch (err) {
+                console.error('File parsing error:', err);
+                showToast(`Failed to parse file: ${err.message}`, 'error');
+            }
+        }
+
+        async function extractTextFromPDF(arrayBuffer) {
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const tokenProps = await page.getTextContent();
+                const pageText = tokenProps.items.map(item => item.str).join(' ');
+                fullText += `\n--- Page ${i} ---\n` + pageText;
+            }
+            return fullText;
+        }
+
+        async function processCVInput() {
+            const rawText = document.getElementById('rawCVInput').value.trim();
+            if (!rawText) {
+                showToast('Please paste publication text or upload a file first.', 'error');
+                return;
+            }
+            showProgressModal(true, 'Extracting Citation Records...');
+            const apiKey = state.customApiKey || "";
+
+            if (!apiKey) {
+                setTimeout(() => {
+                    try {
+                        const parsedRecords = parseCVLocally(rawText);
+                        state.records = parsedRecords;
+                        state.currentPage = 1;
+                        renderRecordsTable();
+                        updateBibTeXView();
+                        showProgressModal(false);
+                        switchTab('metadata');
+                        showToast(`Extracted ${parsedRecords.length} records using enhanced heuristic parser!`, 'success');
+                    } catch (err) {
+                        console.error("Local parsing error:", err);
+                        showProgressModal(false);
+                        showToast(`Local parsing failed: ${err.message}`, 'error');
+                    }
+                }, 400);
+                return;
+            }
+
+            const systemPrompt = `You are an expert Scholarly Communications Librarian specializing in BibTeX and institutional repository metadata.
+Parse the raw CV publication text into clean JSON BibTeX records following these rules:
+1. Strip leading bracketed venue codes like [ISCA’26], [ISSCC’26], [TCAD’25]. Do NOT include them in author or title.
+2. Separate authors into an array formatted strictly as "LastName, FirstName Initial." or "LastName, Initials".
+3. Title must contain ONLY the article/paper title. Strip enclosing quotes, trailing commas, and year tokens.
+4. Container: Put conference names in booktitle and journal names in journal. Strip volume, issue, and page numbers from the journal string!
+5. Volume, Issue, Pages: Extract pure numeric volume into volume (e.g. '44', '11'), issue into number (e.g. '5'), and page numbers or article IDs (e.g. '2897-2910', 'nwae066', '615279') into pages.
+6. Generate citation keys as FirstAuthorLastNameYearKeyword (e.g. Li2025Robospike, Liu2024Advancing).`;
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [{ text: `Parse this publication list into structured BibTeX JSON:\n\n${rawText}` }]
+                }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                entryType: { type: "STRING" },
+                                citationKey: { type: "STRING" },
+                                title: { type: "STRING" },
+                                authors: { type: "ARRAY", items: { type: "STRING" } },
+                                journal: { type: "STRING" },
+                                booktitle: { type: "STRING" },
+                                publisher: { type: "STRING" },
+                                year: { type: "STRING" },
+                                volume: { type: "STRING" },
+                                number: { type: "STRING" },
+                                pages: { type: "STRING" },
+                                doi: { type: "STRING" },
+                                url: { type: "STRING" },
+                                note: { type: "STRING" }
+                            },
+                            required: ["entryType", "title", "authors", "year"]
+                        }
+                    }
+                }
+            };
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+            try {
+                let response = await fetchWithRetry(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                let data = await response.json();
+                let jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!jsonText) throw new Error("No structured output returned from AI.");
+                let parsedRecords = JSON.parse(jsonText);
+                parsedRecords = parsedRecords.map((rec, idx) => sanitizeRecord(rec, idx));
+                state.records = parsedRecords;
+                state.currentPage = 1;
+                renderRecordsTable();
+                updateBibTeXView();
+                showProgressModal(false);
+                switchTab('metadata');
+                showToast(`Extracted ${parsedRecords.length} records successfully!`, 'success');
+            } catch (err) {
+                console.warn("API call failed, falling back to local heuristic parser:", err);
+                const parsedRecords = parseCVLocally(rawText);
+                state.records = parsedRecords;
+                state.currentPage = 1;
+                renderRecordsTable();
+                updateBibTeXView();
+                showProgressModal(false);
+                switchTab('metadata');
+                showToast(`Extracted ${parsedRecords.length} records using local parser!`, 'success');
+            }
+        }
+        window.processCVInput = processCVInput;
+
+        // Enhanced APA/IEEE/ACM Heuristic Parser
+        function parseCVLocally(rawText) {
+            // Normalize quotes, dashes, markdown bold/italic tags
+            let normalized = rawText
+                .replace(/[\u2018\u2019]/g, "'")
+                .replace(/[\u201C\u201D]/g, '"')
+                .replace(/\*\*(.*?)\*\*/g, '$1')
+                .replace(/\*(.*?)\*/g, '$1');
+
+            const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            let rawItems = [];
+            let currentItemLines = [];
+
+            for (let line of lines) {
+                const isBullet = /^(\d+[\.\)]|\[\d+\]|\(\d+\)|\[[A-Za-z0-9\s’'–-]+’?[\d\*]*\])/.test(line);
+                if (isBullet && currentItemLines.length > 0) {
+                    rawItems.push(currentItemLines.join(' '));
+                    currentItemLines = [line];
+                } else {
+                    currentItemLines.push(line);
+                }
+            }
+            if (currentItemLines.length > 0) {
+                rawItems.push(currentItemLines.join(' '));
+            }
+            if (rawItems.length === 0 || (rawItems.length === 1 && rawItems[0].length > 400)) {
+                rawItems = normalized.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+            }
+
+            let records = [];
+            rawItems.forEach((itemText, idx) => {
+                let clean = itemText
+                    .replace(/^(\d+[\.\)]|\[\d+\]|\(\d+\))\s*/, '')
+                    .replace(/^\[[A-Za-z0-9\s'’–-]+’?[\d\*]*\]\s*/, '')
+                    .trim();
+
+                let doi = '';
+                let doiMatch = clean.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/);
+                if (doiMatch) {
+                    doi = doiMatch[1].replace(/[,.)]+$/, '');
+                    clean = clean.replace(doiMatch[0], '').trim();
+                }
+
+                // Detect Year
+                let year = '2024';
+                let yearMatch = clean.match(/\((19\d{2}|20\d{2})\)/) || clean.match(/\b(19\d{2}|20\d{2})\b/);
+                if (yearMatch) {
+                    year = yearMatch[1];
+                }
+
+                let authors = [];
+                let title = '';
+                let container = '';
+                let volume = '';
+                let number = '';
+                let pages = '';
+                let entryType = 'article';
+
+                // Case A: APA Style -> Authors (Year). Title. Container, vol(no), pages.
+                const apaYearRegex = /\((19\d{2}|20\d{2})\)\.?\s*/;
+                if (apaYearRegex.test(clean)) {
+                    const parts = clean.split(apaYearRegex);
+                    const authorPart = parts[0].trim();
+                    const afterYear = parts.slice(2).join('').trim();
+
+                    authors = parseAuthors(authorPart);
+
+                    // Deconstruct title and container from afterYear
+                    let quoteMatch = afterYear.match(/^"([^"]+)"[.,]?\s*(.*)$/);
+                    if (quoteMatch) {
+                        title = quoteMatch[1];
+                        container = quoteMatch[2];
+                    } else {
+                        let inProcMatch = afterYear.match(/^(.*?)\.\s+(In\s+Proceedings\s+of\s+.*?|Proceedings\s+of\s+.*?|In\s*:?\s+.*?)$/i);
+                        if (inProcMatch) {
+                            title = inProcMatch[1];
+                            container = inProcMatch[2];
+                            entryType = 'inproceedings';
+                        } else {
+                            let dotIdx = afterYear.indexOf('. ');
+                            if (dotIdx > 10) {
+                                title = afterYear.substring(0, dotIdx).trim();
+                                container = afterYear.substring(dotIdx + 1).trim();
+                            } else {
+                                title = afterYear;
+                            }
+                        }
+                    }
+                } 
+                // Case B: Quoted Title Style -> Authors “Title,” Container, Year.
+                else if (clean.includes('"')) {
+                    const firstQuote = clean.indexOf('"');
+                    const lastQuote = clean.lastIndexOf('"');
+                    if (firstQuote !== -1 && lastQuote > firstQuote) {
+                        const authorPart = clean.substring(0, firstQuote).replace(/,\s*$/, '').trim();
+                        authors = parseAuthors(authorPart);
+                        title = clean.substring(firstQuote + 1, lastQuote).trim();
+                        container = clean.substring(lastQuote + 1).replace(/^[,\.\s]+/, '').trim();
+                    }
+                } 
+                // Case C: Standard Delimiter Fallback
+                else {
+                    let segments = clean.split('. ');
+                    if (segments.length >= 3) {
+                        authors = parseAuthors(segments[0]);
+                        title = segments[1];
+                        container = segments.slice(2).join('. ');
+                    } else if (segments.length === 2) {
+                        authors = parseAuthors(segments[0]);
+                        title = segments[1];
+                    } else {
+                        title = clean;
+                    }
+                }
+
+                // Dissect Container for Journal/Booktitle, Volume, Issue, Pages
+                if (container) {
+                    if (/proceedings|conf\.|symposium|workshop|acm|ieee\s+international/i.test(container)) {
+                        entryType = 'inproceedings';
+                    }
+
+                    // Pattern 1: Handles Volume + optional (Issue) + Pages / Alphanumeric article ID
+                    // Matches both comma-separated and space-separated volume:
+                    // e.g. "Systems 44, 2897-2910", "National Science Review, 11(5), nwae066", "Frontiers in neuroscience, 15, 615279"
+                    const volIssuePageRegex = /(?:,\s*|\s+)(\d{1,4})\s*(?:\(([^)]+)\))?\s*[:,\s]\s*(?:(?:pp\.?|pages?)\s*)?([A-Za-z0-9\-\–_]+)\.?$/i;
+                    let matchVIP = container.match(volIssuePageRegex);
+
+                    if (matchVIP) {
+                        volume = matchVIP[1];
+                        if (matchVIP[2]) number = matchVIP[2].trim();
+                        pages = matchVIP[3].trim();
+                        container = container.replace(matchVIP[0], '');
+                    } else {
+                        // Pattern 2: Volume + Issue only, e.g., ", 11(5)"
+                        let volIssueMatch = container.match(/(?:,\s*|\s+)(\d{1,4})\s*\(([^)]+)\)\.?$/);
+                        if (volIssueMatch) {
+                            volume = volIssueMatch[1];
+                            number = volIssueMatch[2].trim();
+                            container = container.replace(volIssueMatch[0], '');
+                        } else {
+                            // Pattern 3: Explicit keywords "vol. 44", "no. 5", "pp. 2897-2910"
+                            let singleVolMatch = container.match(/\b(?:vol\.?|volume)\s*(\d+)/i);
+                            if (singleVolMatch) volume = singleVolMatch[1];
+                            let singleNoMatch = container.match(/\b(?:no\.?|issue|number)\s*([A-Za-z0-9]+)/i);
+                            if (singleNoMatch) number = singleNoMatch[1];
+                            let singlePageMatch = container.match(/\b(?:pp\.?|pages?)\s*([A-Za-z0-9\-\–]+)/i);
+                            if (singlePageMatch) pages = singlePageMatch[1];
+
+                            // Clean explicit tokens from container
+                            container = container
+                                .replace(/\b(?:vol\.?|volume)\s*\d+/gi, '')
+                                .replace(/\b(?:no\.?|issue|number)\s*[A-Za-z0-9]+/gi, '')
+                                .replace(/\b(?:pp\.?|pages?)\s*[A-Za-z0-9\-\–]+/gi, '');
+                        }
+                    }
+
+                    // Clean residual markers from container
+                    container = container
+                        .replace(/^In\s+Proceedings\s+of\s+(the\s+)?/i, '')
+                        .replace(/^In\s*:?\s+/i, '')
+                        .replace(/,\s*\d{4}\.?$/, '')
+                        .replace(/[,\.\s]+$/, '')
+                        .trim();
+                }
+
+                // Final Cleanups
+                title = (title || 'Untitled')
+                    .replace(/^["'\(]+|["'\)]+$/g, '')
+                    .replace(/^[0-9]{4}\)\.?\s*/, '')
+                    .replace(/[,\.]\s*$/, '')
+                    .trim();
+
+                if (authors.length === 0) {
+                    authors = ['Author, Unknown'];
+                }
+
+                let rec = {
+                    entryType: entryType,
+                    citationKey: '',
+                    title: title,
+                    authors: authors,
+                    journal: entryType === 'article' ? (container || 'Academic Journal') : '',
+                    booktitle: entryType === 'inproceedings' ? (container || 'Conference Proceedings') : '',
+                    year: year,
+                    volume: volume,
+                    number: number,
+                    pages: pages,
+                    doi: doi,
+                    url: '',
+                    note: ''
+                };
+
+                rec.citationKey = generateCitationKey(rec, idx);
+                records.push(sanitizeRecord(rec, idx));
+            });
+
+            return records;
+        }
+
+        // Author Normalizer -> "LastName, Initials and LastName, Initials"
+        function parseAuthors(raw) {
+            if (!raw) return ['Unknown, Author'];
+            let cleaned = raw
+                .replace(/^(\d+[\.\)]|\[\d+\])\s*/, '')
+                .replace(/\(Eds?\.?\)/i, '')
+                .replace(/&/g, ',')
+                .replace(/\band\b/gi, ',')
+                .trim();
+
+            let tokens = cleaned.split(/[,;]/).map(t => t.trim()).filter(Boolean);
+            let authors = [];
+
+            for (let i = 0; i < tokens.length; i++) {
+                let token = tokens[i];
+                if (i + 1 < tokens.length && /^[A-Z](\.[A-Z]?)*\.?$/.test(tokens[i + 1])) {
+                    authors.push(`${token}, ${tokens[i + 1]}`);
+                    i++;
+                } else if (token.includes(' ')) {
+                    let parts = token.split(' ');
+                    if (parts.length === 2 && parts[1].length <= 3) {
+                        authors.push(`${parts[0]}, ${parts[1]}`);
+                    } else {
+                        authors.push(token);
+                    }
+                } else if (token.length > 1) {
+                    authors.push(token);
+                }
+            }
+
+            return authors.length > 0 ? authors : [cleaned];
+        }
+
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response;
+                    if (response.status === 429) {
+                        await new Promise(r => setTimeout(r, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                } catch (e) {
+                    if (i === maxRetries - 1) throw e;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        function sanitizeRecord(rec, index) {
+            if (rec.doi) {
+                rec.doi = rec.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').trim();
+            }
+            if (rec.volume) {
+                let volMatch = rec.volume.match(/^[0-9]+/);
+                rec.volume = volMatch ? volMatch[0] : rec.volume.replace(/[^0-9]/g, '');
+            }
+            if (rec.number) {
+                rec.number = rec.number.replace(/[^0-9]/g, '');
+            }
+            if (!rec.citationKey) {
+                rec.citationKey = generateCitationKey(rec, index);
+            }
+            if (rec.title) {
+                rec.title = rec.title
+                    .replace(/^["'“‘’„“”\(]+|["'“‘’„“”\)]+$/g, '')
+                    .replace(/^[0-9]{4}\)\.?\s*/, '')
+                    .replace(/[,\.]\s*$/, '')
+                    .trim();
+            }
+            rec.title = escapeLatexChars(rec.title);
+            if (rec.journal) rec.journal = escapeLatexChars(rec.journal);
+            if (rec.booktitle) rec.booktitle = escapeLatexChars(rec.booktitle);
+            if (rec.publisher) rec.publisher = escapeLatexChars(rec.publisher);
+            return rec;
+        }
+
+        function escapeLatexChars(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '\\&')
+                .replace(/%/g, '\\%')
+                .replace(/\$/g, '\\$')
+                .replace(/#/g, '\\#')
+                .replace(/\_/g, '\\_');
+        }
+
+        function generateCitationKey(rec, index = 0) {
+            let authorPart = 'Anon';
+            if (rec.authors && rec.authors.length > 0) {
+                const firstAuthor = rec.authors[0];
+                const lastNameMatch = firstAuthor.split(',')[0].trim().replace(/[^a-zA-Z]/g, '');
+                if (lastNameMatch) authorPart = lastNameMatch;
+            }
+            const yearPart = rec.year ? rec.year.replace(/[^0-9]/g, '') : '2024';
+            let keywordPart = '';
+            if (rec.title) {
+                const cleanWords = rec.title
+                    .replace(/^[0-9\s\(\)\.-]+/, '')
+                    .split(/\s+/)
+                    .map(w => w.replace(/[^a-zA-Z]/g, ''))
+                    .filter(w => w.length > 3 && !['with', 'from', 'that', 'this', 'into', 'using'].includes(w.toLowerCase()));
+                if (cleanWords.length > 0) {
+                    keywordPart = cleanWords[0].charAt(0).toUpperCase() + cleanWords[0].slice(1).toLowerCase();
+                }
+            }
+            return `${authorPart}${yearPart}${keywordPart || 'Paper'}`;
+        }
+
+        function getFilteredRecords() {
+            return state.records.filter((rec) => {
+                const matchesSearch = !state.filterQuery ||
+                    (rec.title && rec.title.toLowerCase().includes(state.filterQuery)) ||
+                    (rec.authors && rec.authors.join(' ').toLowerCase().includes(state.filterQuery)) ||
+                    (rec.citationKey && rec.citationKey.toLowerCase().includes(state.filterQuery));
+                const matchesType = state.filterType === 'all' || rec.entryType === state.filterType;
+                return matchesSearch && matchesType;
+            });
+        }
+
+        function renderRecordsTable() {
+            const tbody = document.getElementById('recordsTableBody');
+            const emptyState = document.getElementById('emptyRecordsState');
+            tbody.innerHTML = '';
+            const filtered = getFilteredRecords();
+
+            document.getElementById('recordCountBadge').innerText = state.records.length;
+            const statusDot = document.getElementById('db-status-dot');
+            const statusText = document.getElementById('db-status-text');
+            if (state.records.length > 0) {
+                statusDot.className = "w-2 h-2 mr-1.5 bg-emerald-500 rounded-full";
+                statusText.innerText = `${state.records.length} records parsed`;
+            } else {
+                statusDot.className = "w-2 h-2 mr-1.5 bg-slate-400 rounded-full";
+                statusText.innerText = "No records loaded";
+            }
+
+            document.getElementById('stat-total').innerText = state.records.length;
+            document.getElementById('stat-valid').innerText = state.records.filter(r => r.title && r.authors && r.authors.length && r.year).length;
+            document.getElementById('stat-missing-doi').innerText = state.records.filter(r => !r.doi && !r.url).length;
+            document.getElementById('stat-non-indexed').innerText = state.records.filter(r => r.entryType === 'misc' || r.entryType === 'unpublished').length;
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                updatePaginationUI(0, 0, 0);
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            const totalItems = filtered.length;
+            const totalPages = Math.ceil(totalItems / state.pageSize) || 1;
+            if (state.currentPage > totalPages) state.currentPage = totalPages;
+
+            const startIdx = (state.currentPage - 1) * state.pageSize;
+            const endIdx = Math.min(startIdx + state.pageSize, totalItems);
+            const pageItems = filtered.slice(startIdx, endIdx);
+
+            pageItems.forEach((rec) => {
+                const realIndex = state.records.indexOf(rec);
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors group border-b border-slate-200 cursor-pointer";
+                tr.ondblclick = () => window.editRecord(realIndex);
+
+                const typeBadgeClass = getTypeBadgeColor(rec.entryType);
+                const authorDisplay = rec.authors ? rec.authors.join(' and ') : 'Unknown Authors';
+                const containerName = rec.journal || rec.booktitle || rec.publisher || 'N/A';
+                const isSelected = state.selectedIndices.has(realIndex);
+
+                tr.innerHTML = `
+                    <td class="p-3.5 text-center"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.toggleSelectRecord(${realIndex}, this.checked)" onclick="event.stopPropagation()"></td>
+                    <td class="p-3.5 text-center">
+                        <span class="px-2.5 py-1 rounded text-[10px] font-bold border ${typeBadgeClass}">@${rec.entryType || 'misc'}</span>
+                    </td>
+                    <td class="p-3.5 font-mono text-[11px] text-hkust-blue font-semibold">${rec.citationKey}</td>
+                    <td class="p-3.5 max-w-md">
+                        <p class="font-semibold text-slate-800 line-clamp-2">${rec.title || 'Untitled'}</p>
+                        <p class="text-[11px] text-slate-500 italic line-clamp-1 mt-0.5">${containerName}${rec.volume ? `, Vol. ${rec.volume}` : ''}${rec.number ? `(${rec.number})` : ''}${rec.pages ? `, pp. ${rec.pages}` : ''}</p>
+                    </td>
+                    <td class="p-3.5 text-slate-600 max-w-xs">
+                        <p class="line-clamp-2 text-[11px]">${authorDisplay}</p>
+                    </td>
+                    <td class="p-3.5 text-center font-mono text-[11px] text-amber-700 font-semibold">${rec.year || '—'}</td>
+                    <td class="p-3.5 font-mono text-[11px] text-slate-600">
+                        ${rec.doi ? `<a href="https://doi.org/${rec.doi}" target="_blank" onclick="event.stopPropagation()" class="text-hkust-blue hover:underline flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i>${rec.doi}</a>` : '<span class="text-slate-400">No DOI</span>'}
+                    </td>
+                    <td class="p-3.5 text-right space-x-1 whitespace-nowrap" onclick="event.stopPropagation()">
+                        <button onclick="window.editRecord(${realIndex})" class="p-1.5 text-slate-500 hover:text-hkust-blue hover:bg-slate-100 rounded transition" title="Edit Record">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="window.deleteRecord(${realIndex})" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded transition" title="Delete Record">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updatePaginationUI(startIdx + 1, endIdx, totalItems, totalPages);
+            lucide.createIcons();
+        }
+
+        function getTypeBadgeColor(type) {
+            switch (type) {
+                case 'article': return 'bg-blue-50 text-blue-700 border-blue-200';
+                case 'inproceedings': return 'bg-purple-50 text-purple-700 border-purple-200';
+                case 'book': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                case 'incollection': return 'bg-teal-50 text-teal-700 border-teal-200';
+                case 'misc': return 'bg-amber-50 text-amber-700 border-amber-200';
+                default: return 'bg-slate-100 text-slate-700 border-slate-200';
+            }
+        }
+
+        function updatePaginationUI(start, end, total, totalPages) {
+            document.getElementById('page-start-idx').innerText = start;
+            document.getElementById('page-end-idx').innerText = end;
+            document.getElementById('page-total-count').innerText = total;
+            document.getElementById('current-page-num').innerText = state.currentPage;
+            document.getElementById('total-pages-num').innerText = totalPages || 1;
+            document.getElementById('btn-prev-page').disabled = state.currentPage <= 1;
+            document.getElementById('btn-next-page').disabled = state.currentPage >= totalPages;
+        }
+
+        function changePage(delta) {
+            state.currentPage += delta;
+            renderRecordsTable();
+        }
+        window.changePage = changePage;
+
+        function applyFilters() {
+            state.filterQuery = document.getElementById('recordSearchInput').value.toLowerCase().trim();
+            state.filterType = document.getElementById('typeFilterSelect').value;
+            state.currentPage = 1;
+            renderRecordsTable();
+        }
+        window.applyFilters = applyFilters;
+
+        function toggleSelectRecord(index, checked) {
+            if (checked) state.selectedIndices.add(index);
+            else state.selectedIndices.delete(index);
+            document.getElementById('selected-count').innerText = state.selectedIndices.size;
+        }
+        window.toggleSelectRecord = toggleSelectRecord;
+
+        function toggleSelectAll(checked) {
+            state.selectedIndices.clear();
+            if (checked) {
+                state.records.forEach((_, idx) => state.selectedIndices.add(idx));
+            }
+            document.getElementById('selected-count').innerText = state.selectedIndices.size;
+            renderRecordsTable();
+        }
+        window.toggleSelectAll = toggleSelectAll;
+
+        function batchFormatKeys() {
+            state.records.forEach((rec, idx) => {
+                rec.citationKey = generateCitationKey(rec, idx);
+            });
+            renderRecordsTable();
+            updateBibTeXView();
+            showToast('Regenerated citation keys according to active pattern.', 'info');
+        }
+        window.batchFormatKeys = batchFormatKeys;
+
+        function clearAllRecords() {
+            if (state.records.length === 0) return;
+            state.records = [];
+            state.selectedIndices.clear();
+            renderRecordsTable();
+            updateBibTeXView();
+            showToast('Cleared all publication records.', 'slate');
+        }
+        window.clearAllRecords = clearAllRecords;
+
+        function updateBibTeXView() {
+            const display = document.getElementById('bibtexCodeDisplay');
+            if (state.records.length === 0) {
+                display.innerText = `% No publication records available.\n% Extract publications in Step 1 to generate BibTeX output.`;
+                document.getElementById('bibtexStatsBadge').innerText = '0 records | 0 lines';
+                return;
+            }
+            const bibtexString = state.records.map(rec => formatRecordToBibTeX(rec)).join('\n\n');
+            display.innerText = bibtexString;
+            const lineCount = bibtexString.split('\n').length;
+            document.getElementById('bibtexStatsBadge').innerText = `${state.records.length} records | ${lineCount} lines`;
+        }
+
+        function formatRecordToBibTeX(rec) {
+            const key = rec.citationKey || generateCitationKey(rec);
+            const type = rec.entryType || 'article';
+            let fields = [];
+
+            if (rec.authors && rec.authors.length > 0) {
+                fields.push(`  author    = {${rec.authors.join(' and ')}}`);
+            }
+            if (rec.title) fields.push(`  title     = {${rec.title}}`);
+            if (type === 'article' && rec.journal) {
+                fields.push(`  journal   = {${rec.journal}}`);
+            } else if ((type === 'inproceedings' || type === 'incollection') && rec.booktitle) {
+                fields.push(`  booktitle = {${rec.booktitle}}`);
+            } else if (rec.journal) {
+                fields.push(`  journal   = {${rec.journal}}`);
+            } else if (rec.booktitle) {
+                fields.push(`  booktitle = {${rec.booktitle}}`);
+            }
+            if (rec.year) fields.push(`  year      = {${rec.year}}`);
+            if (rec.volume) fields.push(`  volume    = {${rec.volume}}`);
+            if (rec.number) fields.push(`  number    = {${rec.number}}`);
+            if (rec.pages) fields.push(`  pages     = {${rec.pages}}`);
+            if (rec.publisher) fields.push(`  publisher = {${rec.publisher}}`);
+            if (rec.doi) fields.push(`  doi       = {${rec.doi}}`);
+            if (rec.url) fields.push(`  url       = {${rec.url}}`);
+            if (rec.note) fields.push(`  note      = {${rec.note}}`);
+
+            return `@${type}{${key},\n${fields.join(',\n')}\n}`;
+        }
+
+        function copyBibTeXToClipboard() {
+            const display = document.getElementById('bibtexCodeDisplay');
+            const code = display.innerText;
+            if (!code || state.records.length === 0) {
+                showToast('No BibTeX code to copy.', 'error');
+                return;
+            }
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('BibTeX code copied to clipboard!', 'success');
+            } catch (err) {
+                showToast('Copy failed. Please select text manually.', 'error');
+            }
+            document.body.removeChild(textarea);
+        }
+        window.copyBibTeXToClipboard = copyBibTeXToClipboard;
+
+        function downloadBibTeXFile() {
+            if (state.records.length === 0) {
+                showToast('No records available to download.', 'error');
+                return;
+            }
+            const content = document.getElementById('bibtexCodeDisplay').innerText;
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `hkust_bib_export_${new Date().toISOString().slice(0,10)}.bib`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast('Downloaded .bib file successfully!', 'success');
+        }
+        window.downloadBibTeXFile = downloadBibTeXFile;
+
+        function exportRecords(format) {
+            if (state.records.length === 0) {
+                showToast('No records available to export.', 'error');
+                return;
+            }
+            const exportData = state.records.map(r => ({
+                'Entry Type': r.entryType,
+                'Citation Key': r.citationKey,
+                'Title': r.title,
+                'Authors': r.authors ? r.authors.join(' and ') : '',
+                'Journal / Container': r.journal || r.booktitle || '',
+                'Year': r.year,
+                'Volume': r.volume || '',
+                'Issue': r.number || '',
+                'Pages': r.pages || '',
+                'DOI': r.doi || '',
+                'URL': r.url || '',
+                'Publisher': r.publisher || '',
+                'Note': r.note || ''
+            }));
+
+            if (format === 'xlsx') {
+                const worksheet = XLSX.utils.json_to_sheet(exportData);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Publications");
+                XLSX.writeFile(workbook, `hkust_publications_${new Date().toISOString().slice(0,10)}.xlsx`);
+                showToast('Exported Excel file successfully!', 'success');
+            } else if (format === 'csv') {
+                const csv = Papa.unparse(exportData);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `hkust_publications_${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Exported CSV document successfully!', 'success');
+            }
+        }
+        window.exportRecords = exportRecords;
+
+        function addNewRecord() {
+            const newRec = {
+                entryType: 'article',
+                citationKey: `NewRecord${Date.now().toString().slice(-4)}`,
+                title: 'New Publication Entry',
+                authors: ['LastName, FirstName'],
+                journal: 'Journal of Academic Research',
+                year: '2024'
+            };
+            state.records.unshift(newRec);
+            renderRecordsTable();
+            editRecord(0);
+        }
+        window.addNewRecord = addNewRecord;
+
+        function editRecord(index) {
+            const rec = state.records[index];
+            if (!rec) return;
+            document.getElementById('editRecordIndex').value = index;
+            document.getElementById('editEntryType').value = rec.entryType || 'article';
+            document.getElementById('editCitationKey').value = rec.citationKey || '';
+            document.getElementById('editTitle').value = rec.title || '';
+            document.getElementById('editAuthors').value = rec.authors ? rec.authors.join(' and ') : '';
+            document.getElementById('editContainer').value = rec.journal || rec.booktitle || '';
+            document.getElementById('editPublisher').value = rec.publisher || '';
+            document.getElementById('editYear').value = rec.year || '';
+            document.getElementById('editVolume').value = rec.volume || '';
+            document.getElementById('editNumber').value = rec.number || '';
+            document.getElementById('editPages').value = rec.pages || '';
+            document.getElementById('editDoi').value = rec.doi || '';
+            document.getElementById('editUrl').value = rec.url || '';
+            document.getElementById('editNote').value = rec.note || '';
+
+            const modal = document.getElementById('recordModal');
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+        window.editRecord = editRecord;
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.add('hidden');
+        }
+        window.closeRecordModal = closeRecordModal;
+
+        function saveRecordModal() {
+            const index = parseInt(document.getElementById('editRecordIndex').value);
+            if (isNaN(index) || !state.records[index]) return;
+            const entryType = document.getElementById('editEntryType').value;
+            const containerVal = document.getElementById('editContainer').value.trim();
+            const authorsRaw = document.getElementById('editAuthors').value.trim();
+            let authorsArr = authorsRaw ? authorsRaw.split(/\band\b/i).map(a => a.trim()).filter(Boolean) : [];
+
+            state.records[index] = {
+                entryType: entryType,
+                citationKey: document.getElementById('editCitationKey').value.trim(),
+                title: document.getElementById('editTitle').value.trim(),
+                authors: authorsArr,
+                journal: entryType === 'article' ? containerVal : '',
+                booktitle: (entryType === 'inproceedings' || entryType === 'incollection') ? containerVal : '',
+                publisher: document.getElementById('editPublisher').value.trim(),
+                year: document.getElementById('editYear').value.trim(),
+                volume: document.getElementById('editVolume').value.trim(),
+                number: document.getElementById('editNumber').value.trim(),
+                pages: document.getElementById('editPages').value.trim(),
+                doi: document.getElementById('editDoi').value.trim(),
+                url: document.getElementById('editUrl').value.trim(),
+                note: document.getElementById('editNote').value.trim()
+            };
+
+            closeRecordModal();
+            renderRecordsTable();
+            updateBibTeXView();
+            showToast('Publication record updated successfully.', 'success');
+        }
+        window.saveRecordModal = saveRecordModal;
+
+        function deleteRecord(index) {
+            state.records.splice(index, 1);
+            renderRecordsTable();
+            updateBibTeXView();
+            showToast('Record removed.', 'slate');
+        }
+        window.deleteRecord = deleteRecord;
+
+        function openSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+        window.openSettingsModal = openSettingsModal;
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+        window.closeSettingsModal = closeSettingsModal;
+
+        function saveSettings() {
+            const key = document.getElementById('customApiKeyInput').value.trim();
+            state.customApiKey = key;
+            if (key) {
+                localStorage.setItem('bibextractor_custom_key', key);
+            } else {
+                localStorage.removeItem('bibextractor_custom_key');
+            }
+            closeSettingsModal();
+            showToast('API Settings saved.', 'success');
+        }
+        window.saveSettings = saveSettings;
+
+        function showProgressModal(show, message = '') {
+            const modal = document.getElementById('modal-progress');
+            if (message) document.getElementById('loadingProgressMsg').innerText = message;
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+            lucide.createIcons();
+        }
+        window.showProgressModal = showProgressModal;
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let bgClass = 'bg-white border-slate-200 text-slate-800 shadow-xl';
+            let iconClass = 'info text-hkust-blue';
+            if (type === 'success') {
+                bgClass = 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xl';
+                iconClass = 'check-circle-2 text-emerald-600';
+            } else if (type === 'error') {
+                bgClass = 'bg-red-50 border-red-200 text-red-900 shadow-xl';
+                iconClass = 'alert-triangle text-red-600';
+            } else if (type === 'slate') {
+                bgClass = 'bg-slate-100 border-slate-300 text-slate-700 shadow-xl';
+                iconClass = 'info text-slate-500';
+            }
+            toast.className = `p-3.5 rounded-xl border ${bgClass} text-xs flex items-center justify-between gap-3 pointer-events-auto transition-all`;
+            toast.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="${iconClass}" class="w-4 h-4"></i>
+                    <span class="font-semibold">${message}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+            setTimeout(() => {
+                if (toast.parentElement) toast.remove();
+            }, 4000);
+        }
+        window.showToast = showToast;
+    </script>
+</body>
+</html>

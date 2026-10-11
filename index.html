@@ -392,7 +392,7 @@
             </div>
             <div class="p-6 overflow-y-auto max-h-[75vh] space-y-5 text-xs custom-scrollbar">
                 <div class="bg-blue-50 border-l-4 border-blue-600 p-3 rounded text-blue-800 mb-2">
-                    <p class="font-medium"><strong>Pro Tip for Publications:</strong> Alphanumeric numbering (<code>P1</code>, <code>A1</code>, <code>S1</code>, <code>B1</code>), Title-first formats, patents, and intro legends are automatically recognized and cleaned.</p>
+                    <p class="font-medium"><strong>Pro Tip for Publications:</strong> Alphanumeric numbering (<code>P1</code>, <code>A1</code>, <code>S1</code>, <code>B1</code>), Title-first formats, multi-line titles with commas, and glued author/journal pairs are handled automatically.</p>
                 </div>
 
                 <div class="space-y-1.5">
@@ -465,7 +465,7 @@
             'ISSCC': { name: 'IEEE International Solid-State Circuits Conference', type: 'inproceedings' },
             'ISCA': { name: 'ACM/IEEE International Symposium on Computer Architecture', type: 'inproceedings' },
             'MICRO': { name: 'IEEE/ACM International Symposium on Microarchitecture', type: 'inproceedings' },
-            'HPCA': { name: 'IEEE International Symposium on High-Performance Computer Architecture', type: 'inproceedings' },
+            'HPCA': { name: 'IEEE Symposium on High-Performance Computer Architecture', type: 'inproceedings' },
             'DAC': { name: 'Design Automation Conference', type: 'inproceedings' },
             'ICCAD': { name: 'International Conference on Computer Aided Design (ICCAD)', type: 'inproceedings' },
             'CICC': { name: 'IEEE Custom Integrated Circuits Conference (CICC)', type: 'inproceedings' },
@@ -503,13 +503,21 @@
             'TPAMI': { name: 'IEEE Transactions on Pattern Analysis and Machine Intelligence', type: 'article' }
         };
 
+        const KNOWN_JOURNALS_LIST = [
+            'BMJ Open', 'EBioMedicine', 'Nature Medicine', 'npj Digital Medicine',
+            'Scientific Reports', 'Bioinformatics', 'Nucleic Acids Research',
+            'Experimental & Molecular Medicine', 'Journal of Biomedical Informatics',
+            'Journal of Medical Internet Research (JMIR)', 'Methods', 'PLoS Computational Biology',
+            'BMC Bioinformatics', 'Computer Graphics Forum', 'Science Robotics', 'Nature Electronics'
+        ];
+
         let state = {
             records: [],
             selectedIndices: new Set(),
             activeTab: 'input',
             customApiKey: '',
             apiModel: 'gemini-1.5-flash',
-            customPrompt: `Publication Parsing Rules:\n- Split entries using newlines, bullets (*, -), numbered citations (1., 2.), or category codes (P1, A1, S1, B1, J1, C1).\n- Note that titles may appear on the first line before authors.\n- Strip redundant bracketed venue tags like [Science Robotics'22] from authors.\n- Exclude non-publication headers and legends like 'Top-tier venues...', '** indicates...', '‡ indicates...'.\n- Exclude patents completely.\n- Discard acceptance rates and awards or place them into the note field.\n- Clean author markers like †, ‡, **, *, (co-first), (co-corresponding).`,
+            customPrompt: `Publication Parsing Rules:\n- Split entries using newlines, bullets (*, -), numbered citations (1., 2.), or category codes (P1, A1, S1, B1, J1, C1).\n- In title-first formats, the title may be on line 1 (even with commas), authors on line 2, and venue on line 3.\n- Ignore patents completely.\n- Exclude non-publication headers and legends like 'Top-tier venues...', '** indicates...', '‡ indicates...'.\n- Discard acceptance rates and awards or place them into the note field.\n- Clean author markers like †, ‡, **, *, (co-first), (co-corresponding).`,
             filterQuery: '',
             filterType: 'all',
             currentPage: 1,
@@ -631,7 +639,6 @@
                     textContent = await extractTextFromPDF(arrayBuffer);
                 } else if (ext === 'docx') {
                     const arrayBuffer = await file.arrayBuffer();
-                    // Use mammoth HTML conversion to preserve table cell boundaries and line breaks
                     const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = result.value
@@ -648,15 +655,13 @@
                     return;
                 }
                 document.getElementById('rawCVInput').value = textContent;
-                showToast('Document text loaded into text area successfully!', 'success');
+                showToast('Document text loaded successfully!', 'success');
             } catch (err) {
                 console.error('File parsing error:', err);
                 showToast(`Failed to parse file: ${err.message}`, 'error');
             }
         }
 
-        // Robust PDF text extraction: sorts items with a generous Y-gap (keeps superscripts on the same line)
-        // and accurately measures X-gap to prevent character-level letter splitting
         async function extractTextFromPDF(arrayBuffer) {
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             let fullText = '';
@@ -664,8 +669,6 @@
                 const page = await pdf.getPage(i);
                 const tokenProps = await page.getTextContent();
 
-                // Sort items from top-to-bottom, left-to-right
-                // 5.5pt line tolerance groups superscripts like ** and ‡ into their actual text line
                 const items = tokenProps.items.slice().sort((a, b) => {
                     const yDiff = b.transform[5] - a.transform[5];
                     if (Math.abs(yDiff) > 5.5) return yDiff;
@@ -693,7 +696,6 @@
                         const expectedX = (lastX !== null && lastWidth !== null) ? (lastX + lastWidth) : null;
                         const xGap = (expectedX !== null) ? (currentX - expectedX) : 0;
 
-                        // Only add space when there is an actual horizontal gap (> 2.0pt) or explicit space
                         if (currentLine && (xGap > 2.0 || str.startsWith(' ') || currentLine.endsWith(' '))) {
                             if (!currentLine.endsWith(' ') && !str.startsWith(' ')) {
                                 currentLine += ' ';
@@ -711,7 +713,6 @@
             return normalizeExtractedText(fullText);
         }
 
-        // Post-processor to clean letter-spaced font bugs and unicode characters
         function normalizeExtractedText(text) {
             if (!text) return '';
             let lines = text.split(/\r?\n/);
@@ -719,7 +720,6 @@
                 let l = line.trim();
                 if (!l) return '';
 
-                // Detect character-spaced lines like "A  b  r  a  n  d  t  *  *  ,"
                 if (/\b[A-Za-z]\s+[A-Za-z]\s+[A-Za-z]\b/.test(l)) {
                     if (l.includes('  ')) {
                         l = l.split(/\s{2,}/).map(chunk => chunk.replace(/([A-Za-z0-9])\s+(?=[A-Za-z0-9])/g, '$1')).join(' ');
@@ -727,7 +727,6 @@
                         l = l.replace(/(?<=\b[A-Za-z])\s+(?=[A-Za-z]\b)/g, '');
                     }
                 }
-                // Normalize quotation marks, daggers, and dashes
                 l = l.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[—–]/g, '-');
                 return l;
             });
@@ -737,7 +736,6 @@
         function isNonPubHeader(line) {
             const clean = line.replace(/[*#_~`]/g, '').trim();
             if (!clean) return true;
-            // PDF Page fractions like 2/7, 3/7
             if (/^\d{1,2}\s*\/\s*\d{1,2}$/.test(clean)) return true;
             if (/^(?:Full\s+)?publication\s+list/i.test(clean)) return true;
             if (/^(?:Main|Collaborative|Selected|Representative|Other|Journal|Conference|Peer-Reviewed)\s+Publications?/i.test(clean)) return true;
@@ -910,25 +908,43 @@ CRITICAL INSTRUCTIONS:
             showToast(`Extracted ${parsedRecords.length} records!`, 'success');
         }
 
-        // Comprehensive Local Parser with Alphanumeric Category Codes, Smushed-Word Separation, and Inverted Title Layout Support
+        // Robust Local Parser supporting Comma-laden Titles, Multi-line Title Layouts, and Glued Suffix Disentanglement
         function parseCVLocally(rawText) {
             let cleanText = rawText
                 .replace(/(?:^|\n)\s*(?:---\s*Page\s*\d+\s*---|Page\s*\d+|\d{1,2}\s*\/\s*\d{1,2})\s*(?=\n|$)/gi, '\n')
-                .replace(/(\w+)-\s*\n\s*(\w+)/g, '$1$2');
+                .replace(/(\w+)-\s*\n\s*(\w+)/g, '$1$2')
+                .replace(/\\&/g, '&');
 
-            // Ensure category markers (P1, A1, S1, B1, etc.) start on their own line even if smushed together in Word docs
             cleanText = cleanText.replace(/([^\n])\s+([PJCASBWT]\d{1,3}\b)/gi, '$1\n$2');
 
-            // Split items on:
-            // 1. Alphanumeric category markers: P1, P2, A1, S1, B1, J1, C1
-            // 2. Standard numbering: 1. Name, [1], 1)
-            // 3. Bullet points: * , - , • 
             const splitRegex = /(?:^|\n+)(?=\s*(?:[PJCASBWT]\d{1,3}\b|\[\d{1,3}\]|\b\d{1,3}\.\s+[A-Z\u4e00-\u9fa5]|[*•\u2022\u25E6\-]\s+))/i;
             let rawItems = cleanText.split(splitRegex);
 
             if (rawItems.length <= 1) {
                 rawItems = cleanText.split(/\n{2,}/);
             }
+
+            // Intelligent Multi-chunk reconciliation: if chunks were split by \n\n but lack a publication year,
+            // merge them into a single publication record
+            let consolidatedItems = [];
+            let tempBuffer = '';
+            for (let piece of rawItems) {
+                if (!piece.trim()) continue;
+                if (tempBuffer) {
+                    tempBuffer += '\n' + piece.trim();
+                } else {
+                    tempBuffer = piece.trim();
+                }
+                if (/\b(19\d{2}|20\d{2})\b/.test(tempBuffer) || /^[PJCASBWT]\d{1,3}\b/i.test(piece.trim())) {
+                    consolidatedItems.push(tempBuffer);
+                    tempBuffer = '';
+                }
+            }
+            if (tempBuffer) {
+                if (consolidatedItems.length > 0) consolidatedItems[consolidatedItems.length - 1] += '\n' + tempBuffer;
+                else consolidatedItems.push(tempBuffer);
+            }
+            rawItems = consolidatedItems;
 
             let records = [];
             let validIndex = 0;
@@ -937,12 +953,10 @@ CRITICAL INSTRUCTIONS:
                 if (!itemText) continue;
                 let text = itemText.trim();
 
-                // Ignore patents, empty items, and intro legends
                 if (/\b(?:Patent|ZL\d{5,}|granted\s+\d{4}|patent\s+no\b)/i.test(text)) continue;
                 if (isNonPubHeader(text) && !/^\s*(?:[*•\u2022\u25E6\-]\s+|\d+[\.\)]|[PJCASBWT]\d{1,3}\b)/i.test(text)) continue;
                 if (text.length < 20) continue;
 
-                // Strip leading index marker: "P1 ", "A1 ", "S1 ", "B1 ", "1. ", "* "
                 let itemCategory = '';
                 const catMatch = text.match(/^\s*([PJCASBWT]\d{1,3})\b\.?\s*/i);
                 if (catMatch) {
@@ -952,7 +966,6 @@ CRITICAL INSTRUCTIONS:
                     text = text.replace(/^([*•\u2022\u25E6\-]+\s+|\*{0,2}\d+[\.\)]\s*|\*?\*?\[\d+\]\s*|\(\d+\)\s*)/, '').trim();
                 }
 
-                // Extract and strip leading venue tag: [Science Robotics’22], [CICC’26], etc.
                 let leadingVenueTag = '';
                 const venueTagMatch = text.match(/^\*{0,2}\[([A-Za-z0-9\s’'–-]+[’']?\d*)\]\*{0,2}\s*/);
                 if (venueTagMatch) {
@@ -960,7 +973,6 @@ CRITICAL INSTRUCTIONS:
                     text = text.replace(/^\*{0,2}\[[A-Za-z0-9\s’'–-]+[’']?\d*\]\*{0,2}\s*/, '').trim();
                 }
 
-                // Extract trailing notes, acceptance rates, and awards
                 let noteParts = [];
                 const accMatch = text.match(/[-—]\s*(\d+(?:\.\d+)?%\s*acceptance\s*rate)/i);
                 if (accMatch) {
@@ -974,19 +986,16 @@ CRITICAL INSTRUCTIONS:
                     text = text.replace(awardMatch[0], '').trim();
                 }
 
-                // Strip trailing evaluative parenthetical notes
                 let trailingNoteMatch;
                 while ((trailingNoteMatch = text.match(/\s*\(([^)]*(?:top-|q[1-4]|tier|journal|conference|impact|factor|highlight|ccf|accepted|to\s+appear|poster|oral|annual|award|progress)[\w\s.,%:-]*)\)\s*$/i))) {
                     noteParts.unshift(trailingNoteMatch[1].trim());
                     text = text.substring(0, text.lastIndexOf(trailingNoteMatch[0])).trim();
                 }
 
-                // Clean author annotations: **, ‡, †, (co-first), etc.
                 text = text.replace(/\s*\([^)]*(?:co-first|corresponding|equal|first\s+author|inventor|contributed)[^)]*\)/gi, '');
                 text = text.replace(/[†‡§\*]/g, '');
                 text = text.replace(/\.\s*,/g, '.,').replace(/\s+,/g, ',');
 
-                // Extract DOI & URL
                 let doi = '';
                 let url = '';
 
@@ -1016,10 +1025,8 @@ CRITICAL INSTRUCTIONS:
                 let number = '';
                 let pages = '';
 
-                // Handle Title-first structure (P1/P2/P4 format)
                 let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
-                // If title and authors were merged without a newline in docx tables (e.g. "...diabetes BS Kong, H Lee...")
                 if (lines.length >= 1) {
                     const transMatch = lines[0].match(/([a-z0-9\)\]])\s+([A-Z]{1,3}\s+[A-Z][a-zA-Z'’-]+|[A-Z][a-zA-Z'’-]+,\s+[A-Z]{1,3})\s*,\s*([A-Z]{1,3}\s+[A-Z]|S\s+L['’]Yi|[A-Z][a-z]+)/);
                     if (transMatch) {
@@ -1030,30 +1037,62 @@ CRITICAL INSTRUCTIONS:
                     }
                 }
 
-                if (lines.length >= 2 && !lines[0].includes(',') && (lines[1].includes(',') || lines[1].includes(';'))) {
-                    // Pattern: Line 0 = Title, Line 1 = Authors, Line 2 = Venue & Details
-                    title = lines[0];
-                    authors = parseAuthorsList(lines[1]);
-                    const venueText = lines.slice(2).join(' ').trim();
+                // Title-First Layout Detection: Find the author line and venue line
+                let authorLineIdx = -1;
+                if (lines.length >= 2) {
+                    for (let i = 1; i < lines.length; i++) {
+                        let candidate = lines[i];
+                        if ((candidate.includes(',') || candidate.includes(';')) && 
+                            /([A-Z]{1,3}\s+[A-Z][a-z]+|[A-Z][a-z]+,\s+[A-Z]{1,3}|S\s+L['’]Yi|Gehlenborg|Taing|Brandt)/.test(candidate) &&
+                            !/\b(19\d{2}|20\d{2})\b/.test(candidate)) {
+                            authorLineIdx = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (authorLineIdx > 0) {
+                    title = lines.slice(0, authorLineIdx).join(' ').trim();
+                    authors = parseAuthorsList(lines[authorLineIdx]);
+                    let venueText = lines.slice(authorLineIdx + 1).join(' ').trim();
+
+                    // Disentangle glued author and venue names (e.g., 'T CaiBMJ Open', 'KP LiaoEBioMedicine')
+                    for (let knownJournal of KNOWN_JOURNALS_LIST) {
+                        const escapedJ = escapeRegex(knownJournal);
+                        const gluedRegex = new RegExp(`^([A-Z][a-zA-Z\\s.'-]+?)(${escapedJ})\\b`, 'i');
+                        const gMatch = venueText.match(gluedRegex);
+                        if (gMatch) {
+                            const extraAuthor = gMatch[1].trim();
+                            if (extraAuthor && !authors.includes(extraAuthor)) {
+                                authors.push(extraAuthor);
+                            }
+                            venueText = venueText.substring(extraAuthor.length).trim();
+                            break;
+                        }
+                    }
 
                     const yrMatch = venueText.match(/\b(19\d{2}|20\d{2})\b/);
                     if (yrMatch) year = yrMatch[0];
 
-                    // Extract Volume, Issue, Pages: e.g. "32(7): 6447-6463", "21(11): e1013657", "441, 1-17", "50(D1) D61-D66"
-                    const vipMatch = venueText.match(/(?:,\s*|\s+)(\d{1,4})\s*(?:\(([^)]+)\))?\s*[:,\s]\s*([a-zA-Z0-9]+(?:[–-][a-zA-Z0-9]+)?)/);
+                    // Extract Volume, Issue, Pages: e.g. "50(D1), D61-D66, 2024", "12, 6, 2022", "32(7): 6447-6463"
+                    const vipMatch = venueText.match(/(?:,\s*|\s+)(\d{1,4})\s*(?:\(([^)]+)\))?\s*(?:[:,]\s*|\s+)([a-zA-Z0-9]+(?:[–-][a-zA-Z0-9]+)?)/);
                     if (vipMatch) {
                         volume = vipMatch[1];
                         if (vipMatch[2]) number = vipMatch[2];
-                        pages = vipMatch[3];
+                        let candidateP = vipMatch[3];
+                        if (!vipMatch[2] && /^\d{1,2}$/.test(candidateP) && yrMatch && venueText.indexOf(yrMatch[0]) > venueText.indexOf(candidateP)) {
+                            number = candidateP;
+                        } else {
+                            pages = candidateP;
+                        }
                         container = venueText.substring(0, venueText.indexOf(vipMatch[0])).trim();
                     } else {
                         container = venueText.replace(/,?\s*\b(19\d{2}|20\d{2})\b.*$/, '').trim();
                     }
                 } else {
-                    // Standard inline parsing logic
+                    // Standard inline parsing fallback
                     let clean = text.replace(/\*{1,3}/g, '').trim().replace(/[,.\s]+$/, '');
 
-                    // Case A: Mid-citation year: Authors (Year). Title. Journal...
                     if (/\((19\d{2}|20\d{2})\)\.?/.test(clean)) {
                         const yrMatch = clean.match(/\((19\d{2}|20\d{2})\)\.?/);
                         year = yrMatch[1];
@@ -1067,9 +1106,7 @@ CRITICAL INSTRUCTIONS:
                         } else {
                             title = rest;
                         }
-                    }
-                    // Case B: Tail journal & numbers: ... Journal, 2024, 24, 2503-2510.
-                    else if (clean.match(/,?\s*\b(19\d{2}|20\d{2})\b\s*,\s*(\d{1,4})(?:,\s*|\s*\(|\s+)(\d{1,4})?(?:\)|,)?(?:,\s*|\s+)([a-zA-Z0-9]+(?:[–-][a-zA-Z0-9]+)?)\.?.*$/)) {
+                    } else if (clean.match(/,?\s*\b(19\d{2}|20\d{2})\b\s*,\s*(\d{1,4})(?:,\s*|\s*\(|\s+)(\d{1,4})?(?:\)|,)?(?:,\s*|\s+)([a-zA-Z0-9]+(?:[–-][a-zA-Z0-9]+)?)\.?.*$/)) {
                         const tailMatch = clean.match(/,?\s*\b(19\d{2}|20\d{2})\b\s*,\s*(\d{1,4})(?:,\s*|\s*\(|\s+)(\d{1,4})?(?:\)|,)?(?:,\s*|\s+)([a-zA-Z0-9]+(?:[–-][a-zA-Z0-9]+)?)\.?.*$/);
                         year = tailMatch[1];
                         volume = tailMatch[2];
@@ -1093,9 +1130,7 @@ CRITICAL INSTRUCTIONS:
                         } else {
                             title = head;
                         }
-                    }
-                    // Case C: Dot-delimited fallback
-                    else {
+                    } else {
                         const yrMatch = clean.match(/\b(19\d{2}|20\d{2})\b/);
                         if (yrMatch) year = yrMatch[0];
 
@@ -1116,7 +1151,6 @@ CRITICAL INSTRUCTIONS:
                 if (!year) year = new Date().getFullYear().toString();
                 container = container.replace(/,?\s*\b(19\d{2}|20\d{2})\b.*$/, '').replace(/[.,\s]+$/, '').trim();
 
-                // Venue acronym matching & document type classification
                 let upperContainer = container.toUpperCase();
                 for (let [acronym, def] of Object.entries(VENUE_DICTIONARY)) {
                     if (upperContainer === acronym || upperContainer.startsWith(acronym + ',') || upperContainer.startsWith(acronym + ' ') || upperContainer.includes(`(${acronym})`)) {
@@ -1163,7 +1197,7 @@ CRITICAL INSTRUCTIONS:
         function parseAuthorsList(authorStr) {
             if (!authorStr) return [];
 
-            let str = authorStr.replace(/^[\d.\-\s]+/, '').replace(/&/g, ',').replace(/\band\b/gi, ',').trim();
+            let str = authorStr.replace(/^[\d.\-\s]+/, '').replace(/\\&/g, '&').replace(/&/g, ',').replace(/\band\b/gi, ',').trim();
             str = str.replace(/[†‡§\*]/g, '').trim();
             str = str.replace(/\([^)]*(?:co-first|corresponding|equal|first\s+author|inventor|contributed)[^)]*\)/gi, '').trim();
 
@@ -1178,7 +1212,6 @@ CRITICAL INSTRUCTIONS:
                 let token = tokens[i];
                 let lastAuthor = authors[authors.length - 1];
 
-                // Detect initials like "HN", "S", "TC", "L'Yi", "M"
                 let isInitial = token.includes('.') || /^[A-Z]{1,3}(-[A-Z]{1,3})?\.?$/.test(token) || token.length <= 2;
 
                 if (lastAuthor && !lastAuthor.includes(',') && isInitial) {
@@ -1195,24 +1228,32 @@ CRITICAL INSTRUCTIONS:
 
         function sanitizeTitle(title) {
             if (!title) return 'Untitled Publication';
-            return title.replace(/^["'“‘\s]+|["'”’\s]+$/g, '').replace(/[.,;]+$/, '').trim();
+            return title.replace(/^["'“‘\s]+|["'”’\s]+$/g, '').replace(/[.;]+$/, '').trim();
+        }
+
+        function unescapeLatexChars(str) {
+            if (!str) return '';
+            return str.replace(/\\([&%$#_{}])/g, '$1');
         }
 
         function sanitizeRecord(rec, index) {
             if (rec.doi) rec.doi = rec.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').replace(/^\/+/, '').trim();
-            if (rec.title) rec.title = escapeLatexChars(sanitizeTitle(rec.title));
-            if (rec.journal) rec.journal = escapeLatexChars(rec.journal);
-            if (rec.booktitle) rec.booktitle = escapeLatexChars(rec.booktitle);
-            if (rec.publisher) rec.publisher = escapeLatexChars(rec.publisher);
-            if (rec.note) rec.note = escapeLatexChars(rec.note);
+            rec.title = unescapeLatexChars(sanitizeTitle(rec.title));
+            if (rec.journal) rec.journal = unescapeLatexChars(rec.journal);
+            if (rec.booktitle) rec.booktitle = unescapeLatexChars(rec.booktitle);
+            if (rec.publisher) rec.publisher = unescapeLatexChars(rec.publisher);
+            if (rec.note) rec.note = unescapeLatexChars(rec.note);
             if (!rec.citationKey) rec.citationKey = generateCitationKey(rec, index);
             return rec;
         }
 
         function escapeRegex(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+        
         function escapeLatexChars(str) {
             if (!str) return '';
-            return str.replace(/&/g, '\\&').replace(/%/g, '\\%').replace(/\$/g, '\\$').replace(/#/g, '\\#').replace(/\_/g, '\\_');
+            // Remove prior backslashes before escaping to avoid double-escaping
+            let unescaped = str.replace(/\\([&%$#_{}])/g, '$1');
+            return unescaped.replace(/([&%$#_{}])/g, '\\$1');
         }
 
         function generateCitationKey(rec, index = 0) {
@@ -1254,7 +1295,7 @@ CRITICAL INSTRUCTIONS:
         }
 
         function getFilteredRecords() {
-            return state.records.filter((rec, index) => {
+            return state.records.filter((rec) => {
                 const matchesSearch = !state.filterQuery ||
                     (rec.title && rec.title.toLowerCase().includes(state.filterQuery)) ||
                     (rec.authors && rec.authors.join(' ').toLowerCase().includes(state.filterQuery)) ||
@@ -1336,44 +1377,48 @@ CRITICAL INSTRUCTIONS:
             document.getElementById('page-end-idx').innerText = end;
             document.getElementById('page-total-count').innerText = total;
             const nav = document.getElementById('pagination-nav');
-            if (!nav) return; nav.innerHTML = ''; if (totalPages <= 1) return;
-            const container = document.createElement('div'); container.className = 'flex items-center space-x-3 text-slate-700 font-medium text-[13px]';
-            const prevBtn = document.createElement('button'); prevBtn.innerText = 'Previous'; prevBtn.disabled = state.currentPage === 1;
-            prevBtn.className = 'px-3.5 py-1.5 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition';
-            prevBtn.onclick = () => goToPage(state.currentPage - 1); container.appendChild(prevBtn);
+            if (!nav) return;
+            nav.innerHTML = '';
+            if (totalPages <= 1) return;
 
-            const selectWrapper = document.createElement('div'); selectWrapper.className = 'relative flex items-center gap-2';
-            selectWrapper.innerHTML = `<span>Page</span>`;
-            const select = document.createElement('select');
-            select.className = 'appearance-none bg-white border border-slate-300 rounded-md pl-3.5 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-hkust-blue cursor-pointer font-semibold text-slate-700';
-            select.onchange = (e) => goToPage(parseInt(e.target.value));
+            let optionsHtml = '';
             for (let i = 1; i <= totalPages; i++) {
-                const opt = document.createElement('option'); opt.value = i; opt.innerText = i;
-                if (i === state.currentPage) opt.selected = true; select.appendChild(opt);
+                optionsHtml += `<option value="${i}" ${i === state.currentPage ? 'selected' : ''}>${i}</option>`;
             }
-            selectWrapper.appendChild(select);
-            selectWrapper.innerHTML += `<span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500"><i data-lucide="chevron-down" class="w-4 h-4"></i></span>`;
-            container.appendChild(selectWrapper);
 
-            const ofText = document.createElement('span'); ofText.innerText = `of ${totalPages}`; container.appendChild(ofText);
-
-            const nextBtn = document.createElement('button'); nextBtn.innerText = 'Next'; nextBtn.disabled = state.currentPage === totalPages;
-            nextBtn.className = 'px-3.5 py-1.5 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition';
-            nextBtn.onclick = () => goToPage(state.currentPage + 1); container.appendChild(nextBtn);
-            nav.appendChild(container); lucide.createIcons();
+            nav.innerHTML = `
+                <div class="flex items-center space-x-3 text-slate-700 font-medium text-[13px]">
+                    <button onclick="window.goToPage(${state.currentPage - 1})" ${state.currentPage === 1 ? 'disabled' : ''} class="px-3.5 py-1.5 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">Previous</button>
+                    <div class="relative flex items-center gap-2">
+                        <span>Page</span>
+                        <div class="relative inline-flex items-center">
+                            <select onchange="window.goToPage(parseInt(this.value))" class="appearance-none bg-white border border-slate-300 rounded-md pl-3.5 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-hkust-blue cursor-pointer font-semibold text-slate-700">
+                                ${optionsHtml}
+                            </select>
+                            <span class="pointer-events-none absolute right-2 text-slate-500"><i data-lucide="chevron-down" class="w-4 h-4"></i></span>
+                        </div>
+                        <span>of ${totalPages}</span>
+                    </div>
+                    <button onclick="window.goToPage(${state.currentPage + 1})" ${state.currentPage === totalPages ? 'disabled' : ''} class="px-3.5 py-1.5 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition">Next</button>
+                </div>
+            `;
+            lucide.createIcons();
         }
 
         function goToPage(pageNum) {
             const totalPages = Math.ceil(getFilteredRecords().length / state.pageSize) || 1;
             if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages) return;
-            state.currentPage = pageNum; renderRecordsTable();
+            state.currentPage = pageNum;
+            renderRecordsTable();
         }
         window.goToPage = goToPage;
 
         function applyFilters() {
             state.filterQuery = document.getElementById('recordSearchInput').value.toLowerCase().trim();
             state.filterType = document.getElementById('typeFilterSelect').value;
-            state.currentPage = 1; state.selectedIndices.clear(); renderRecordsTable();
+            state.currentPage = 1;
+            state.selectedIndices.clear();
+            renderRecordsTable();
         }
         window.applyFilters = applyFilters;
 
@@ -1421,21 +1466,21 @@ CRITICAL INSTRUCTIONS:
             const key = rec.citationKey || generateCitationKey(rec);
             const type = rec.entryType || 'article';
             let fields = [];
-            if (rec.authors && rec.authors.length > 0) fields.push(`  author    = {${rec.authors.join(' and ')}}`);
-            if (rec.title) fields.push(`  title     = {${rec.title}}`);
-            if (type === 'article' && rec.journal) fields.push(`  journal   = {${rec.journal}}`);
-            else if ((type === 'inproceedings' || type === 'incollection') && rec.booktitle) fields.push(`  booktitle = {${rec.booktitle}}`);
-            else if (rec.journal) fields.push(`  journal   = {${rec.journal}}`);
-            else if (rec.booktitle) fields.push(`  booktitle = {${rec.booktitle}}`);
+            if (rec.authors && rec.authors.length > 0) fields.push(`  author    = {${rec.authors.map(escapeLatexChars).join(' and ')}}`);
+            if (rec.title) fields.push(`  title     = {${escapeLatexChars(rec.title)}}`);
+            if (type === 'article' && rec.journal) fields.push(`  journal   = {${escapeLatexChars(rec.journal)}}`);
+            else if ((type === 'inproceedings' || type === 'incollection') && rec.booktitle) fields.push(`  booktitle = {${escapeLatexChars(rec.booktitle)}}`);
+            else if (rec.journal) fields.push(`  journal   = {${escapeLatexChars(rec.journal)}}`);
+            else if (rec.booktitle) fields.push(`  booktitle = {${escapeLatexChars(rec.booktitle)}}`);
 
             if (rec.year) fields.push(`  year      = {${rec.year}}`);
             if (rec.volume) fields.push(`  volume    = {${rec.volume}}`);
             if (rec.number) fields.push(`  number    = {${rec.number}}`);
             if (rec.pages) fields.push(`  pages     = {${rec.pages}}`);
-            if (rec.publisher) fields.push(`  publisher = {${rec.publisher}}`);
+            if (rec.publisher) fields.push(`  publisher = {${escapeLatexChars(rec.publisher)}}`);
             if (rec.doi) fields.push(`  doi       = {${rec.doi}}`);
             if (rec.url) fields.push(`  url       = {${rec.url}}`);
-            if (rec.note) fields.push(`  note      = {${rec.note}}`);
+            if (rec.note) fields.push(`  note      = {${escapeLatexChars(rec.note)}}`);
             return `@${type}{${key},\n${fields.join(',\n')}\n}`;
         }
 

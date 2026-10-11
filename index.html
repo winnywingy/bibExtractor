@@ -16,6 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <!-- Mammoth.js for Word DOCX text extraction -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -43,10 +44,12 @@
         .code-font {
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
+        /* Ensure focus rings don't cause layout shift */
+        textarea:focus { outline: none; }
     </style>
 </head>
 <body class="h-full flex flex-col bg-slate-50 text-slate-800 antialiased selection:bg-hkust-gold selection:text-hkust-navy">
-    <!-- Top Navigation Bar -->
+    <!-- Top Navigation Bar (HKUST Navy Theme) -->
     <header class="bg-hkust-navy text-white shadow-md sticky top-0 z-30">
         <div class="w-full px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
@@ -60,11 +63,13 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
+                <!-- API Settings Button -->
                 <button onclick="window.openSettingsModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-lg transition flex items-center space-x-1.5 border border-slate-600 shadow">
                     <i data-lucide="key" class="w-4 h-4 text-hkust-gold"></i>
                     <span>API Settings</span>
-                    <span id="apiKeyStatusBadge" class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                    <span id="apiKeyStatusBadge" class="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
                 </button>
+
                 <!-- Multi-Format Export Dropdown Menu -->
                 <div class="relative inline-block text-left" id="export-dropdown-wrapper">
                     <button onclick="window.toggleExportMenu()" class="px-3 py-1.5 bg-hkust-gold hover:bg-amber-500 text-hkust-navy font-bold text-xs rounded-lg transition flex items-center space-x-1.5 shadow">
@@ -94,8 +99,8 @@
         </div>
     </header>
 
-    <!-- Notification Toast Container -->
-    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none"></div>
+    <!-- Notification Toast Container (Bottom-Left) -->
+    <div id="toastContainer" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none"></div>
 
     <!-- Main Workspace Container -->
     <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
@@ -116,42 +121,34 @@
                     <span>3. BibTeX Code</span>
                 </button>
             </nav>
-            <div class="text-xs text-slate-500 flex items-center space-x-2">
-                <span id="db-status" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                    <span id="db-status-dot" class="w-2 h-2 mr-1.5 bg-slate-400 rounded-full"></span>
-                    <span id="db-status-text">No records loaded</span>
-                </span>
-            </div>
         </div>
 
         <!-- TAB 1: FILE UPLOAD & CONFIGURATION -->
         <div id="tab-content-input" class="space-y-6">
             <div class="grid grid-cols-1 gap-6">
+                <!-- Unified Input Section -->
                 <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
                             <span class="w-3 h-3 bg-hkust-blue rounded-full"></span>
-                            <h2 class="font-bold text-slate-800 text-base">Publication Lists</h2>
+                            <h2 class="font-bold text-slate-800 text-base">Publication Input</h2>
                         </div>
                         <button onclick="window.clearInput()" class="text-xs text-slate-400 hover:text-red-600 transition flex items-center gap-1">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                             Clear Input
                         </button>
                     </div>
-                    <p class="text-xs text-slate-500">Paste publication lists in any standard citation format (APA, IEEE, ACM, Chicago) or drop CV files below.</p>
-                    <textarea id="rawCVInput" class="w-full min-h-[350px] p-4 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-hkust-blue focus:border-hkust-blue text-slate-800 code-font text-xs sm:text-sm leading-relaxed resize-y placeholder:text-slate-400 shadow-inner" placeholder="Paste publication lists here...
 
-Examples:
-1. Li, H., Yang, Q., Ma, S., Zhao, R., Ji, X. (2025). “RoboSpike: Fully Utilizing the Heterogeneous System With Subcallback Scheduling in ROS 2”, IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems 44, 2897-2910
-2. Liu, F., Zheng, H., Ma, S., Zhang, W., Liu, X., Chua, Y., Shi, L., Zhao, R. (2024). Advancing brain-inspired computing with hybrid neural networks. National Science Review, 11(5), nwae066.
-3. Wang, G., Ma, S., Wu, Y., Pei, J., Zhao, R., Shi, L. (2021). End-to-end implementation of various hybrid neural networks on a cross-paradigm neuromorphic chip. Frontiers in neuroscience, 15, 615279."></textarea>
+                    <!-- Unified Text Area & Drag-Drop Zone -->
+                    <div id="dropZone" class="group relative flex flex-col border-2 border-dashed border-slate-300 hover:border-hkust-blue focus-within:border-hkust-blue focus-within:ring-2 focus-within:ring-hkust-blue/20 rounded-lg bg-slate-50 transition-all overflow-hidden">
+                        <textarea id="rawCVInput" class="w-full min-h-[300px] p-5 bg-transparent border-none focus:ring-0 text-slate-800 code-font text-xs sm:text-sm leading-relaxed resize-y placeholder:text-slate-400" placeholder="Paste publication lists or full CV here..."></textarea>
 
-                    <!-- Drag and Drop File Upload Area -->
-                    <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-hkust-blue rounded-lg p-5 text-center cursor-pointer transition bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center group">
-                        <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt,.md,.bib,.ris" onchange="window.handleFileSelect(event)">
-                        <i data-lucide="file-spreadsheet" class="w-8 h-8 text-slate-400 group-hover:text-hkust-blue mb-1.5 transition-colors"></i>
-                        <p class="text-xs font-semibold text-slate-700">Click to upload or drag & drop CV document here</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Supports PDF, Word (.docx), Plain Text (.txt, .md, .bib)</p>
+                        <div class="w-full border-t border-slate-200/60 bg-slate-100/50 p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-200/50 transition-colors" onclick="document.getElementById('fileInput').click()">
+                            <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt,.md,.bib,.ris" onchange="window.handleFileSelect(event)">
+                            <i data-lucide="file-up" class="w-6 h-6 text-slate-400 group-hover:text-hkust-blue mb-1.5 transition-colors"></i>
+                            <p class="text-xs font-semibold text-slate-700 group-hover:text-hkust-blue transition-colors">Click to upload or drag & drop CV document anywhere</p>
+                            <p class="text-[11px] text-slate-400 mt-1">Supports PDF, Word (.docx), Plain Text (.txt, .md, .bib)</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,7 +165,7 @@ Examples:
         <!-- TAB 2: REVIEW EXTRACTED RECORDS QUEUE -->
         <div id="tab-content-metadata" class="hidden space-y-6">
             <!-- Stats Overview Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
                     <div>
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Extracted</p>
@@ -187,54 +184,32 @@ Examples:
                         <i data-lucide="check-circle-2" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-l-amber-500">
-                    <div>
-                        <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Missing DOIs</p>
-                        <p id="stat-missing-doi" class="text-2xl font-extrabold text-amber-700 mt-1">0</p>
-                    </div>
-                    <div class="p-3 bg-amber-50 rounded-xl text-amber-600">
-                        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
-                    </div>
-                </div>
-                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between border-l-4 border-l-blue-600">
-                    <div>
-                        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Non-Indexed</p>
-                        <p id="stat-non-indexed" class="text-2xl font-extrabold text-blue-700 mt-1">0</p>
-                    </div>
-                    <div class="p-3 bg-blue-50 rounded-xl text-blue-600">
-                        <i data-lucide="file-text" class="w-5 h-5"></i>
-                    </div>
-                </div>
             </div>
 
             <!-- Controls & Filter Bar -->
             <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
                 <div class="flex flex-col xl:flex-row gap-3 items-center justify-between">
                     <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                        <!-- Search Input -->
                         <div class="relative w-full sm:w-72">
                             <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
                             <input type="text" id="recordSearchInput" oninput="window.applyFilters()" placeholder="Search title, author, key..." class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-hkust-blue">
                         </div>
+
+                        <!-- Filter Document Type Dropdown -->
                         <div class="flex items-center space-x-2">
                             <label for="typeFilterSelect" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Document Type:</label>
                             <select id="typeFilterSelect" onchange="window.applyFilters()" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 bg-white text-slate-800 focus:ring-2 focus:ring-hkust-blue font-semibold shadow-sm">
                                 <option value="all" selected>All Entry Types</option>
-                                <option value="article">@article</option>
-                                <option value="inproceedings">@inproceedings</option>
-                                <option value="book">@book</option>
-                                <option value="incollection">@incollection</option>
-                                <option value="misc">@misc</option>
                             </select>
                         </div>
                     </div>
+
+                    <!-- Action Buttons -->
                     <div class="flex items-center space-x-2 w-full xl:w-auto justify-end">
                         <button onclick="window.addNewRecord()" class="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition flex items-center space-x-1">
                             <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
                             <span>Add Entry</span>
-                        </button>
-                        <button onclick="window.batchFormatKeys()" class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg transition flex items-center space-x-1">
-                            <i data-lucide="key" class="w-3.5 h-3.5 text-amber-600"></i>
-                            <span>Regenerate Keys</span>
                         </button>
                         <button onclick="window.clearAllRecords()" class="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition flex items-center space-x-1">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -242,13 +217,11 @@ Examples:
                         </button>
                     </div>
                 </div>
+
                 <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs gap-2">
                     <div class="flex items-center space-x-2 text-slate-600">
                         <input type="checkbox" id="select-all-cb" onchange="window.toggleSelectAll(this.checked)" class="rounded text-hkust-navy focus:ring-hkust-navy">
                         <span class="font-medium"><span id="selected-count">0</span> items selected</span>
-                    </div>
-                    <div class="text-xs text-slate-500">
-                        Double click any record row or use action buttons to edit publication metadata.
                     </div>
                 </div>
             </div>
@@ -259,10 +232,10 @@ Examples:
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
                             <tr class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 uppercase text-[11px] tracking-wider">
-                                <th class="p-3.5 w-10 text-center"><input type="checkbox" id="header-select-all" onchange="window.toggleSelectAll(this.checked)"></th>
+                                <th class="p-3.5 w-10 text-center"><input type="checkbox" id="header-select-all" onchange="window.toggleSelectAll(this.checked)" class="rounded text-hkust-navy focus:ring-hkust-navy"></th>
                                 <th class="p-3.5 w-32 text-center whitespace-nowrap">Document Type</th>
                                 <th class="p-3.5 w-36 whitespace-nowrap">Citation Key</th>
-                                <th class="p-3.5 min-w-[320px]">Title &amp; Container</th>
+                                <th class="p-3.5 min-w-[320px]">Publication</th>
                                 <th class="p-3.5 w-48">Authors</th>
                                 <th class="p-3.5 w-20 text-center whitespace-nowrap">Year</th>
                                 <th class="p-3.5 w-44">DOI / Identifiers</th>
@@ -274,21 +247,20 @@ Examples:
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Empty State -->
                 <div id="emptyRecordsState" class="p-12 text-center flex flex-col items-center justify-center gap-2">
                     <i data-lucide="inbox" class="w-10 h-10 text-slate-300 mb-1"></i>
                     <p class="font-medium text-slate-600">No publication records extracted yet.</p>
-                    <p class="text-xs text-slate-400 max-w-sm">Paste raw CV text in Step 1 or upload a file to parse.</p>
+                    <p class="text-xs text-slate-400 max-w-sm">Paste raw CV text in Step 1 to test parsing.</p>
                 </div>
-                <!-- Pagination Bar -->
-                <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+
+                <!-- Pagination Bar with Drop-down Selection -->
+                <div class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs gap-3">
                     <div class="text-slate-500">
                         Showing <span id="page-start-idx" class="font-semibold text-slate-700">0</span> to <span id="page-end-idx" class="font-semibold text-slate-700">0</span> of <span id="page-total-count" class="font-semibold text-slate-700">0</span> filtered items
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="window.changePage(-1)" id="btn-prev-page" disabled class="px-3 py-1 bg-white border border-slate-300 rounded font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">Previous</button>
-                        <span id="pagination-controls" class="text-slate-600 font-medium">Page <span id="current-page-num">1</span> of <span id="total-pages-num">1</span></span>
-                        <button onclick="window.changePage(1)" id="btn-next-page" disabled class="px-3 py-1 bg-white border border-slate-300 rounded font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">Next</button>
-                    </div>
+                     <nav id="pagination-nav" class="flex items-center space-x-1.5" aria-label="Pagination"></nav>
                 </div>
             </div>
         </div>
@@ -296,6 +268,7 @@ Examples:
         <!-- TAB 3: BIBTEX CODE & EXPORT -->
         <div id="tab-content-bibtex" class="hidden space-y-6">
             <div class="bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                <!-- Toolbar -->
                 <div class="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-100 border-b border-slate-200">
                     <div class="flex items-center space-x-3">
                         <div class="flex items-center space-x-2 text-xs text-slate-700 font-semibold">
@@ -315,6 +288,7 @@ Examples:
                         </button>
                     </div>
                 </div>
+                <!-- Code Viewport -->
                 <div class="relative bg-slate-900 p-5 overflow-auto min-h-[480px]">
                     <pre id="bibtexCodeDisplay" class="code-font text-xs sm:text-sm text-emerald-400 leading-relaxed font-mono whitespace-pre selection:bg-hkust-gold selection:text-hkust-navy">% Extracted BibTeX code will appear here...</pre>
                 </div>
@@ -322,7 +296,7 @@ Examples:
         </div>
     </main>
 
-    <!-- EDIT RECORD MODAL -->
+    <!-- EDIT / ADD RECORD MODAL -->
     <div id="recordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
             <div class="px-6 py-4 bg-hkust-navy text-white flex items-center justify-between">
@@ -359,9 +333,9 @@ Examples:
                     <textarea id="editTitle" rows="2" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue resize-y"></textarea>
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Authors (Joined by 'and')</label>
-                    <input type="text" id="editAuthors" placeholder="Wang, G. and Ma, S. and Wu, Y." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
-                    <p class="text-[10px] text-slate-400 mt-1">Format: <code class="text-hkust-blue font-semibold">LastName, FirstInitial. and LastName2, FirstInitial2.</code></p>
+                    <label class="block font-semibold text-slate-700 mb-1">Authors (Separated by semicolon ; or 'and')</label>
+                    <input type="text" id="editAuthors" placeholder="Dong, P.; Tan, Y.; Ma, S." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    <p class="text-[10px] text-slate-400 mt-1">Format: <code class="text-hkust-blue font-semibold">LastName, FirstName</code> (Joined by 'and' in BibTeX)</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -388,13 +362,13 @@ Examples:
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">Pages / Article ID</label>
-                        <input type="text" id="editPages" placeholder="2897-2910 or nwae066" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                        <input type="text" id="editPages" placeholder="e12345 or 2897-2910" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
                     </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">DOI Identifier</label>
-                        <input type="text" id="editDoi" placeholder="10.3389/fnins.2021..." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                        <input type="text" id="editDoi" placeholder="10.1038/..." class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
                     </div>
                     <div>
                         <label class="block font-semibold text-slate-700 mb-1">URL Resolver</label>
@@ -402,8 +376,8 @@ Examples:
                     </div>
                 </div>
                 <div>
-                    <label class="block font-semibold text-slate-700 mb-1">Note / Context</label>
-                    <input type="text" id="editNote" placeholder="Additional notes" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
+                    <label class="block font-semibold text-slate-700 mb-1">Note / Impact Factor / Award Notes</label>
+                    <input type="text" id="editNote" placeholder="Additional notes or metrics" class="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-800 focus:ring-2 focus:ring-hkust-blue">
                 </div>
             </div>
             <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
@@ -427,7 +401,7 @@ Examples:
             </div>
             <div class="p-6 space-y-4 text-xs">
                 <p class="text-slate-600 leading-relaxed">
-                    By default, this tool can use local heuristic parsing or a provided Gemini API Key for semantic recognition.
+                    By default, this tool operates with an advanced client-side regex engine. You can optionally provide a Gemini API Key to enable dual AI disambiguation for complex and non-standard CVs.
                 </p>
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold text-slate-700 block">Custom Gemini API Key (Optional)</label>
@@ -435,24 +409,28 @@ Examples:
                 </div>
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold text-slate-700 block">Target Gemini Model</label>
-                    <input type="text" value="gemini-2.5-flash" disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-500 cursor-not-allowed">
+                    <select id="apiModelSelect" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:ring-2 focus:ring-hkust-blue font-medium">
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast & Default)</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Advanced Logic)</option>
+                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (Newest Generation)</option>
+                    </select>
                 </div>
             </div>
             <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2">
+                <button onclick="window.closeSettingsModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white border border-slate-300 rounded-lg transition">Cancel</button>
                 <button onclick="window.saveSettings()" class="px-4 py-2 text-xs font-bold text-white bg-hkust-navy hover:bg-slate-800 rounded-lg shadow transition">Save Settings</button>
             </div>
         </div>
     </div>
 
-    <!-- PROGRESS MODAL -->
+    <!-- RECONCILIATION PROGRESS MODAL -->
     <div id="modal-progress" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center space-y-4 border border-slate-200">
             <div class="w-12 h-12 bg-hkust-navy/10 text-hkust-navy rounded-full flex items-center justify-center mx-auto">
                 <i data-lucide="cpu" class="w-6 h-6 animate-pulse"></i>
             </div>
             <div>
-                <h3 class="font-bold text-slate-800 text-base" id="progress-title">Processing</h3>
-                <p class="text-xs text-slate-500 mt-1" id="loadingProgressMsg">Analyzing citation structure...</p>
+                <h3 class="font-bold text-slate-800 text-base" id="progress-title">Running...</h3>
             </div>
             <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
                 <div id="progress-bar" class="bg-hkust-navy h-3 rounded-full transition-all duration-300 w-1/3 animate-pulse"></div>
@@ -461,32 +439,90 @@ Examples:
     </div>
 
     <script>
+        // Common Conference & Journal Acronym Mapping Dictionary
+        const VENUE_DICTIONARY = {
+            'ICML': { name: 'International Conference on Machine Learning', type: 'inproceedings' },
+            'NEURIPS': { name: 'Conference on Neural Information Processing Systems', type: 'inproceedings' },
+            'NIPS': { name: 'Conference on Neural Information Processing Systems', type: 'inproceedings' },
+            'CVPR': { name: 'IEEE/CVF Conference on Computer Vision and Pattern Recognition', type: 'inproceedings' },
+            'ICCV': { name: 'IEEE/CVF International Conference on Computer Vision', type: 'inproceedings' },
+            'ECCV': { name: 'European Conference on Computer Vision', type: 'inproceedings' },
+            'AAAI': { name: 'AAAI Conference on Artificial Intelligence', type: 'inproceedings' },
+            'IJCAI': { name: 'International Joint Conference on Artificial Intelligence', type: 'inproceedings' },
+            'ACM MM': { name: 'ACM International Conference on Multimedia', type: 'inproceedings' },
+            'EMNLP': { name: 'Conference on Empirical Methods in Natural Language Processing', type: 'inproceedings' },
+            'ACL': { name: 'Annual Meeting of the Association for Computational Linguistics', type: 'inproceedings' },
+            'NAACL': { name: 'Conference of the North American Chapter of the Association for Computational Linguistics', type: 'inproceedings' },
+            'KDD': { name: 'ACM SIGKDD Conference on Knowledge Discovery and Data Mining', type: 'inproceedings' },
+            'SIGGRAPH': { name: 'ACM SIGGRAPH Conference on Computer Graphics and Interactive Techniques', type: 'inproceedings' },
+            'ICLR': { name: 'International Conference on Learning Representations', type: 'inproceedings' },
+            'ISSCC': { name: 'IEEE International Solid-State Circuits Conference', type: 'inproceedings' },
+            'ISCA': { name: 'ACM/IEEE International Symposium on Computer Architecture', type: 'inproceedings' },
+            'MICRO': { name: 'IEEE/ACM International Symposium on Microarchitecture', type: 'inproceedings' },
+            'HPCA': { name: 'IEEE International Symposium on High-Performance Computer Architecture', type: 'inproceedings' },
+            'DAC': { name: 'Design Automation Conference', type: 'inproceedings' },
+            'TCAD': { name: 'IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems', type: 'article' },
+            'IJCV': { name: 'International Journal of Computer Vision', type: 'article' },
+            'TPAMI': { name: 'IEEE Transactions on Pattern Analysis and Machine Intelligence', type: 'article' },
+            'AI MAGAZINE': { name: 'AI Magazine', type: 'article' },
+            'PATTERN RECOGNITION': { name: 'Pattern Recognition', type: 'article' }
+        };
+
+        // Application State Store (Set pageSize to 20)
         let state = {
             records: [],
             selectedIndices: new Set(),
             activeTab: 'input',
             customApiKey: '',
+            apiModel: 'gemini-1.5-flash',
             filterQuery: '',
             filterType: 'all',
             currentPage: 1,
-            pageSize: 10
+            pageSize: 20
         };
 
+        // Initialize libraries on DOM load
         window.addEventListener('DOMContentLoaded', () => {
             if (window.pdfjsLib) {
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             }
+
+            // Load saved settings
             const savedKey = localStorage.getItem('bibextractor_custom_key');
             if (savedKey) {
                 state.customApiKey = savedKey;
-                document.getElementById('customApiKeyInput').value = savedKey;
+                const inputEl = document.getElementById('customApiKeyInput');
+                if (inputEl) inputEl.value = savedKey;
             }
+
+            const savedModel = localStorage.getItem('bibextractor_api_model');
+            if (savedModel) {
+                state.apiModel = savedModel;
+                const modelSelect = document.getElementById('apiModelSelect');
+                if (modelSelect) modelSelect.value = savedModel;
+            }
+
+            updateApiKeyBadge();
             setupDragAndDrop();
+            updateDocumentTypeFilterOptions();
             renderRecordsTable();
             updateBibTeXView();
             lucide.createIcons();
         });
 
+        function updateApiKeyBadge() {
+            const badge = document.getElementById('apiKeyStatusBadge');
+            if (!badge) return;
+            if (state.customApiKey) {
+                badge.className = "w-2 h-2 rounded-full bg-emerald-400 inline-block";
+                badge.title = `API key active using ${state.apiModel}`;
+            } else {
+                badge.className = "w-2 h-2 rounded-full bg-slate-400 inline-block";
+                badge.title = "No API key configured (using local heuristic parser)";
+            }
+        }
+
+        // Tab Switching Logic
         function switchTab(tabId) {
             state.activeTab = tabId;
             const tabs = ['input', 'metadata', 'bibtex'];
@@ -511,6 +547,7 @@ Examples:
         }
         window.switchTab = switchTab;
 
+        // Export Dropdown Toggle
         function toggleExportMenu() {
             const menu = document.getElementById('export-menu');
             menu.classList.toggle('hidden');
@@ -536,10 +573,16 @@ Examples:
         }
         window.clearInput = clearInput;
 
+        // Drag and Drop Upload Setup
         function setupDragAndDrop() {
             const dropZone = document.getElementById('dropZone');
             if (!dropZone) return;
-            dropZone.addEventListener('click', () => document.getElementById('fileInput').click());
+            dropZone.addEventListener('click', (e) => {
+                // Ignore clicks if they originate from the textarea
+                if (e.target.tagName.toLowerCase() !== 'textarea') {
+                    document.getElementById('fileInput').click();
+                }
+            });
             ['dragenter', 'dragover'].forEach(evt => {
                 dropZone.addEventListener(evt, (e) => {
                     e.preventDefault();
@@ -555,8 +598,9 @@ Examples:
                 }, false);
             });
             dropZone.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                if (dt.files.length) handleFile(dt.files[0]);
+                if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+                     handleFile(e.dataTransfer.files[0]);
+                }
             });
         }
 
@@ -570,23 +614,22 @@ Examples:
             showToast(`Reading document: ${file.name}...`, 'info');
             const ext = file.name.split('.').pop().toLowerCase();
             try {
+                let textContent = '';
                 if (['txt', 'md', 'bib', 'ris'].includes(ext)) {
-                    const text = await file.text();
-                    document.getElementById('rawCVInput').value = text;
-                    showToast('Document text loaded successfully!', 'success');
+                    textContent = await file.text();
                 } else if (ext === 'pdf') {
                     const arrayBuffer = await file.arrayBuffer();
-                    const pdfText = await extractTextFromPDF(arrayBuffer);
-                    document.getElementById('rawCVInput').value = pdfText;
-                    showToast('Extracted text from PDF document successfully!', 'success');
+                    textContent = await extractTextFromPDF(arrayBuffer);
                 } else if (ext === 'docx') {
                     const arrayBuffer = await file.arrayBuffer();
                     const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
-                    document.getElementById('rawCVInput').value = result.value;
-                    showToast('Extracted text from DOCX document successfully!', 'success');
+                    textContent = result.value;
                 } else {
                     showToast('Unsupported file type. Please upload PDF, DOCX, TXT, or BIB.', 'error');
+                    return;
                 }
+                document.getElementById('rawCVInput').value = textContent;
+                showToast('Document text loaded into text area successfully!', 'success');
             } catch (err) {
                 console.error('File parsing error:', err);
                 showToast(`Failed to parse file: ${err.message}`, 'error');
@@ -605,26 +648,89 @@ Examples:
             return fullText;
         }
 
+        // CV Section Filter
+        function filterCVSections(rawText) {
+            const nonPubHeaders = [
+                /^\s*(\*{1,2})?\s*(AWARDS|HONOURS|HONORS|FELLOWSHIPS|SCHOLARSHIPS)(\s*&|\s+AND)?.*(\*{1,2})?\s*$/i,
+                /^\s*(\*{1,2})?\s*(ACADEMIC\s+SERVICE|PROFESSIONAL\s+SERVICE|EDITORIAL|AD\s+HOC\s+REVIEWER).*(\*{1,2})?\s*$/i,
+                /^\s*(\*{1,2})?\s*(TEACHING|COURSES\s+TAUGHT|ADVISING|MENTORING).*(\*{1,2})?\s*$/i,
+                /^\s*(\*{1,2})?\s*(EDUCATION|ACADEMIC\s+BACKGROUND|QUALIFICATIONS).*(\*{1,2})?\s*$/i,
+                /^\s*(\*{1,2})?\s*(RESEARCH\s+GRANTS|FUNDED\s+PROJECTS|GRANTS).*(\*{1,2})?\s*$/i,
+                /^\s*(\*{1,2})?\s*(EMPLOYMENT|APPOINTMENTS|WORK\s+EXPERIENCE).*(\*{1,2})?\s*$/i
+            ];
+            const pubHeaders = [
+                /^\s*(\*{1,2})?\s*(PUBLICATIONS|SELECTED\s+PUBLICATIONS|JOURNAL\s+ARTICLES|CONFERENCE\s+PROCEEDINGS|BOOK\s+CHAPTERS|WORKING\s+PAPERS|PREPRINTS).*(\*{1,2})?\s*$/i
+            ];
+            const lines = rawText.split(/\r?\n/);
+            let inPubSection = null; 
+            let filteredLines = [];
+            for (let line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                let isPubHeader = pubHeaders.some(regex => regex.test(trimmed));
+                if (isPubHeader) {
+                    inPubSection = true;
+                    continue;
+                }
+                let isNonPubHeader = nonPubHeaders.some(regex => regex.test(trimmed));
+                if (isNonPubHeader) {
+                    inPubSection = false;
+                    continue;
+                }
+                if (inPubSection === false) {
+                    continue;
+                }
+                filteredLines.push(line);
+            }
+            return filteredLines.join('\n');
+        }
+
+        // Update Document Type Filter Dropdown to only show existing types
+        function updateDocumentTypeFilterOptions() {
+            const select = document.getElementById('typeFilterSelect');
+            if (!select) return;
+            const existingTypes = new Set();
+            state.records.forEach(r => {
+                if (r.entryType) existingTypes.add(r.entryType);
+            });
+            const currentVal = state.filterType;
+            let optionsHtml = '<option value="all">All Entry Types</option>';
+            const sortedTypes = Array.from(existingTypes).sort();
+            sortedTypes.forEach(t => {
+                optionsHtml += `<option value="${t}">@${t}</option>`;
+            });
+            select.innerHTML = optionsHtml;
+            if (existingTypes.has(currentVal) || currentVal === 'all') {
+                select.value = currentVal;
+            } else {
+                select.value = 'all';
+                state.filterType = 'all';
+            }
+        }
+
+        // Main Ingestion and Parsing Routine
         async function processCVInput() {
-            const rawText = document.getElementById('rawCVInput').value.trim();
+            let rawText = document.getElementById('rawCVInput').value.trim();
             if (!rawText) {
                 showToast('Please paste publication text or upload a file first.', 'error');
                 return;
             }
-            showProgressModal(true, 'Extracting Citation Records...');
-            const apiKey = state.customApiKey || "";
+            rawText = filterCVSections(rawText);
+            showProgressModal(true);
 
+            const apiKey = state.customApiKey || "";
             if (!apiKey) {
                 setTimeout(() => {
                     try {
                         const parsedRecords = parseCVLocally(rawText);
                         state.records = parsedRecords;
                         state.currentPage = 1;
+                        updateDocumentTypeFilterOptions();
                         renderRecordsTable();
                         updateBibTeXView();
                         showProgressModal(false);
                         switchTab('metadata');
-                        showToast(`Extracted ${parsedRecords.length} records using enhanced heuristic parser!`, 'success');
+                        showToast(`Extracted ${parsedRecords.length} records!`, 'success');
                     } catch (err) {
                         console.error("Local parsing error:", err);
                         showProgressModal(false);
@@ -634,19 +740,19 @@ Examples:
                 return;
             }
 
-            const systemPrompt = `You are an expert Scholarly Communications Librarian specializing in BibTeX and institutional repository metadata.
-Parse the raw CV publication text into clean JSON BibTeX records following these rules:
-1. Strip leading bracketed venue codes like [ISCA’26], [ISSCC’26], [TCAD’25]. Do NOT include them in author or title.
-2. Separate authors into an array formatted strictly as "LastName, FirstName Initial." or "LastName, Initials".
-3. Title must contain ONLY the article/paper title. Strip enclosing quotes, trailing commas, and year tokens.
-4. Container: Put conference names in booktitle and journal names in journal. Strip volume, issue, and page numbers from the journal string!
-5. Volume, Issue, Pages: Extract pure numeric volume into volume (e.g. '44', '11'), issue into number (e.g. '5'), and page numbers or article IDs (e.g. '2897-2910', 'nwae066', '615279') into pages.
-6. Generate citation keys as FirstAuthorLastNameYearKeyword (e.g. Li2025Robospike, Liu2024Advancing).`;
+            // Dual AI Ingestion Schema (Gemini)
+            const systemPrompt = `You are an expert Scholarly Communications Librarian. Parse the unstructured CV or publication list into standardized BibTeX-compatible JSON objects.
+Rules:
+1. Parse every publication into a JSON object.
+2. Ignore venue bracketed tags like [ISSCC'26], [ISCA'26] as authors. Map them to conference proceedings (booktitle) or expand known acronyms.
+3. Separate volume, number, pages, doi, and url accurately.
+4. Separate bibliometric notes (Impact factors, ranks, presentations, prizes) into the note field.
+5. Format authors as "LastName, FirstName Initial" array.`;
 
             const payload = {
                 contents: [{
                     role: "user",
-                    parts: [{ text: `Parse this publication list into structured BibTeX JSON:\n\n${rawText}` }]
+                    parts: [{ text: `Parse the following scholarly citations:\n\n${rawText}` }]
                 }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
                 generationConfig: {
@@ -677,7 +783,8 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 }
             };
 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const targetModel = state.apiModel || 'gemini-1.5-flash';
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
             try {
                 let response = await fetchWithRetry(apiUrl, {
@@ -692,40 +799,41 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 parsedRecords = parsedRecords.map((rec, idx) => sanitizeRecord(rec, idx));
                 state.records = parsedRecords;
                 state.currentPage = 1;
+                updateDocumentTypeFilterOptions();
                 renderRecordsTable();
                 updateBibTeXView();
                 showProgressModal(false);
                 switchTab('metadata');
-                showToast(`Extracted ${parsedRecords.length} records successfully!`, 'success');
+                showToast(`Extracted ${parsedRecords.length} records!`, 'success');
             } catch (err) {
-                console.warn("API call failed, falling back to local heuristic parser:", err);
-                const parsedRecords = parseCVLocally(rawText);
-                state.records = parsedRecords;
-                state.currentPage = 1;
-                renderRecordsTable();
-                updateBibTeXView();
-                showProgressModal(false);
-                switchTab('metadata');
-                showToast(`Extracted ${parsedRecords.length} records using local parser!`, 'success');
+                console.warn("AI processing error, switching to heuristic fallback:", err);
+                try {
+                    let parsedRecords = parseCVLocally(rawText);
+                    state.records = parsedRecords;
+                    state.currentPage = 1;
+                    updateDocumentTypeFilterOptions();
+                    renderRecordsTable();
+                    updateBibTeXView();
+                    showProgressModal(false);
+                    switchTab('metadata');
+                    showToast(`Extracted ${parsedRecords.length} records!`, 'success');
+                } catch (localErr) {
+                    showProgressModal(false);
+                    showToast(`Parsing failed: ${localErr.message}`, 'error');
+                }
             }
         }
         window.processCVInput = processCVInput;
 
-        // Enhanced APA/IEEE/ACM Heuristic Parser
+        // Comprehensive Local Heuristic Parser
         function parseCVLocally(rawText) {
-            // Normalize quotes, dashes, markdown bold/italic tags
-            let normalized = rawText
-                .replace(/[\u2018\u2019]/g, "'")
-                .replace(/[\u201C\u201D]/g, '"')
-                .replace(/\*\*(.*?)\*\*/g, '$1')
-                .replace(/\*(.*?)\*/g, '$1');
-
-            const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
             let rawItems = [];
             let currentItemLines = [];
-
             for (let line of lines) {
-                const isBullet = /^(\d+[\.\)]|\[\d+\]|\(\d+\)|\[[A-Za-z0-9\s’'–-]+’?[\d\*]*\])/.test(line);
+                const isBullet = /^(\*{0,2}\d+[\.\)]|\*?\*?\[\d+\]|\(\d+\)|\*?\*?\[[A-Za-z0-9\s’'–-]+[’']?\d*\]\*?\*?)/.test(line);
+                const isYearHeader = /^\*{0,2}(19\d{2}|20\d{2})\*{0,2}$/.test(line);
+                if (isYearHeader) continue;
                 if (isBullet && currentItemLines.length > 0) {
                     rawItems.push(currentItemLines.join(' '));
                     currentItemLines = [line];
@@ -736,211 +844,261 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
             if (currentItemLines.length > 0) {
                 rawItems.push(currentItemLines.join(' '));
             }
-            if (rawItems.length === 0 || (rawItems.length === 1 && rawItems[0].length > 400)) {
-                rawItems = normalized.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+            if (rawItems.length === 0 || (rawItems.length === 1 && rawItems[0].length > 500)) {
+                rawItems = rawText.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
             }
-
             let records = [];
             rawItems.forEach((itemText, idx) => {
-                let clean = itemText
-                    .replace(/^(\d+[\.\)]|\[\d+\]|\(\d+\))\s*/, '')
-                    .replace(/^\[[A-Za-z0-9\s'’–-]+’?[\d\*]*\]\s*/, '')
-                    .trim();
-
+                let text = itemText.trim();
+                // Strip leading numbering, bullets, and markdown asterisks
+                text = text.replace(/^(\*{0,2}\d+[\.\)]\s*|\*?\*?\[\d+\]\s*|\(\d+\)\s*)/, '').trim();
+                // 1. Detect Leading Conference/Venue Bracket Tags
+                let leadingVenueTag = '';
+                const venueTagMatch = text.match(/^\*{0,2}\[([A-Za-z0-9\s’'–-]+[’']?\d*)\]\*{0,2}\s*/);
+                if (venueTagMatch) {
+                    leadingVenueTag = venueTagMatch[1].trim();
+                    text = text.replace(/^\*{0,2}\[[A-Za-z0-9\s’'–-]+[’']?\d*\]\*{0,2}\s*/, '').trim();
+                }
+                // 2. Extract and Strip Bibliometric Notes, Presentation Types, & Awards in Parentheses
+                let noteParts = [];
+                const noteRegex = /\((IF\b[^\)]*|Rank[^\)]*|Oral\s+Presentation|Poster\s+Presentation|Best\s+Poster[^\)]*|Journal\s+cover|Research\s+highlight[^\)]*|ESI\s+Highly\s+Cited[^\)]*|\d+\s+citations[^\)]*)\)/gi;
+                text = text.replace(noteRegex, (match, p1) => {
+                    noteParts.push(p1.trim());
+                    return '';
+                });
+                text = text.replace(/\b(Nature Index Journal|ESI Highly Cited Paper)\b/gi, (match) => {
+                    noteParts.push(match.trim());
+                    return '';
+                });
+                text = text.replace(/\(co-first\)/gi, '');
+                text = text.replace(/[\†\*]/g, '');
+                // 3. Extract DOI and URLs
                 let doi = '';
-                let doiMatch = clean.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/);
+                const doiMatch = text.match(/\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)\b/);
                 if (doiMatch) {
                     doi = doiMatch[1].replace(/[,.)]+$/, '');
-                    clean = clean.replace(doiMatch[0], '').trim();
+                    text = text.replace(new RegExp(`<?https?:\/\/(dx\.)?doi\.org\/${escapeRegex(doi)}>?`, 'i'), '');
+                    text = text.replace(new RegExp(`<?${escapeRegex(doi)}>?`, 'i'), '');
                 }
-
-                // Detect Year
-                let year = '2024';
-                let yearMatch = clean.match(/\((19\d{2}|20\d{2})\)/) || clean.match(/\b(19\d{2}|20\d{2})\b/);
-                if (yearMatch) {
-                    year = yearMatch[1];
+                let url = '';
+                const urlMatch = text.match(/<?(https?:\/\/[^\s>]+)>?/i);
+                if (urlMatch && !urlMatch[1].includes('doi.org')) {
+                    url = urlMatch[1];
+                    text = text.replace(urlMatch[0], '');
                 }
-
+                // 4. Extract Publication Year
+                let year = '';
+                const yearParenMatch = text.match(/\((19\d{2}|20[0-3]\d)\)/);
+                if (yearParenMatch) {
+                    year = yearParenMatch[1];
+                } else {
+                    const trailingYearMatch = text.match(/\b(19\d{2}|20[0-3]\d)\b/);
+                    if (trailingYearMatch) year = trailingYearMatch[1];
+                }
+                if (!year) year = new Date().getFullYear().toString();
+                // 5. Deconstruct Authors, Title, Container, Volume, Issue, Pages
+                let entryType = 'article';
                 let authors = [];
                 let title = '';
                 let container = '';
                 let volume = '';
                 let number = '';
                 let pages = '';
-                let entryType = 'article';
-
-                // Case A: APA Style -> Authors (Year). Title. Container, vol(no), pages.
-                const apaYearRegex = /\((19\d{2}|20\d{2})\)\.?\s*/;
-                if (apaYearRegex.test(clean)) {
-                    const parts = clean.split(apaYearRegex);
-                    const authorPart = parts[0].trim();
-                    const afterYear = parts.slice(2).join('').trim();
-
-                    authors = parseAuthors(authorPart);
-
-                    // Deconstruct title and container from afterYear
-                    let quoteMatch = afterYear.match(/^"([^"]+)"[.,]?\s*(.*)$/);
-                    if (quoteMatch) {
-                        title = quoteMatch[1];
-                        container = quoteMatch[2];
-                    } else {
-                        let inProcMatch = afterYear.match(/^(.*?)\.\s+(In\s+Proceedings\s+of\s+.*?|Proceedings\s+of\s+.*?|In\s*:?\s+.*?)$/i);
-                        if (inProcMatch) {
-                            title = inProcMatch[1];
-                            container = inProcMatch[2];
-                            entryType = 'inproceedings';
-                        } else {
-                            let dotIdx = afterYear.indexOf('. ');
-                            if (dotIdx > 10) {
-                                title = afterYear.substring(0, dotIdx).trim();
-                                container = afterYear.substring(dotIdx + 1).trim();
-                            } else {
-                                title = afterYear;
-                            }
+                let clean = text.replace(/\*{1,3}/g, '').trim();
+                const isChinese = /[\u4e00-\u9fa5]/.test(clean);
+                if (isChinese) {
+                    const parts = clean.split(/[。.]+(?=\s*[\u4e00-\u9fa5A-Za-z])/);
+                    if (parts.length >= 2) {
+                        const authorPart = parts[0].replace(/\(\d{4}\)/, '').trim();
+                        authors = authorPart.split(/[;；]/).map(a => a.trim()).filter(Boolean);
+                        title = parts[1].trim();
+                        if (parts[2]) {
+                            container = parts.slice(2).join('. ').trim();
                         }
                     }
-                } 
-                // Case B: Quoted Title Style -> Authors “Title,” Container, Year.
-                else if (clean.includes('"')) {
-                    const firstQuote = clean.indexOf('"');
-                    const lastQuote = clean.lastIndexOf('"');
-                    if (firstQuote !== -1 && lastQuote > firstQuote) {
-                        const authorPart = clean.substring(0, firstQuote).replace(/,\s*$/, '').trim();
-                        authors = parseAuthors(authorPart);
-                        title = clean.substring(firstQuote + 1, lastQuote).trim();
-                        container = clean.substring(lastQuote + 1).replace(/^[,\.\s]+/, '').trim();
+                    const volMatch = container.match(/(?:v\.|vol\.|卷)\s*([0-9]+)/i);
+                    if (volMatch) volume = volMatch[1];
+                    const numMatch = container.match(/(?:\(|no\.|期)\s*([0-9]+)\s*\)?/i);
+                    if (numMatch) number = numMatch[1];
+                    const pageMatch = container.match(/(?:p\.|pp\.|页)\s*([0-9]+[-–][0-9]+|[0-9]+)/i);
+                    if (pageMatch) pages = pageMatch[1];
+                    container = container.replace(/,?\s*(v\.|vol\.|卷|p\.|pp\.|页|\(|\)|no\.|期|\d+[-–]\d+|\d+)+/gi, '').replace(/[,，]+$/, '').trim();
+                } else if (clean.includes('“') || clean.includes('"') || clean.includes('”')) {
+                    const quoteMatch = clean.match(/[“"‘'„]([^”"'’„]+)[”"’'’„]/);
+                    if (quoteMatch) {
+                        title = quoteMatch[1].trim();
+                        const beforeQuote = clean.substring(0, clean.indexOf(quoteMatch[0])).trim();
+                        authors = parseAuthorsList(beforeQuote);
+                        container = clean.substring(clean.indexOf(quoteMatch[0]) + quoteMatch[0].length).trim();
+                        container = container.replace(/^[,.\s]+/, '').replace(/[,.\s]+$/, '');
                     }
-                } 
-                // Case C: Standard Delimiter Fallback
-                else {
-                    let segments = clean.split('. ');
-                    if (segments.length >= 3) {
-                        authors = parseAuthors(segments[0]);
-                        title = segments[1];
-                        container = segments.slice(2).join('. ');
-                    } else if (segments.length === 2) {
-                        authors = parseAuthors(segments[0]);
-                        title = segments[1];
+                } else if (/\(\d{4}\)\./.test(clean)) {
+                    const yearIdx = clean.search(/\(\d{4}\)\./);
+                    const authorPart = clean.substring(0, yearIdx).trim();
+                    authors = parseAuthorsList(authorPart);
+                    const rest = clean.substring(yearIdx + 7).trim();
+                    const restParts = rest.split(/\.\s+(?=[A-Za-z0-9])/);
+                    title = restParts[0].trim();
+                    container = restParts.slice(1).join('. ').trim();
+                } else {
+                    const dotParts = clean.split(/\.\s+/);
+                    if (dotParts.length >= 3) {
+                        authors = parseAuthorsList(dotParts[0]);
+                        title = dotParts[1].trim();
+                        container = dotParts.slice(2).join('. ').trim();
+                    } else if (dotParts.length === 2) {
+                        authors = parseAuthorsList(dotParts[0]);
+                        title = dotParts[1].trim();
                     } else {
                         title = clean;
                     }
                 }
-
-                // Dissect Container for Journal/Booktitle, Volume, Issue, Pages
-                if (container) {
-                    if (/proceedings|conf\.|symposium|workshop|acm|ieee\s+international/i.test(container)) {
+                // 6. Parse Volume, Issue, and Pages / Article ID from Container
+                const vipRegex = /(?:,\s*|\s+)(\d{1,4})\s*(?:\(\d{1,3}\))?[,:\s]+([a-zA-Z0-9]+(?:[-–][a-zA-Z0-9]+)?)/;
+                const vipMatch = container.match(vipRegex);
+                if (vipMatch) {
+                    if (!volume) volume = vipMatch[1];
+                    if (!number && vipMatch[2]) number = vipMatch[2];
+                    if (!pages && vipMatch[3]) pages = vipMatch[3];
+                    container = container.replace(vipMatch[0], '').trim();
+                } else {
+                    const articleIdMatch = container.match(/\b(e\d{5,8}|\d{6,8})\b/i);
+                    if (articleIdMatch) {
+                        pages = articleIdMatch[1];
+                        container = container.replace(articleIdMatch[0], '').trim();
+                    }
+                }
+                container = container.replace(/,?\s*\b(19\d{2}|20\d{2})\b\.?/, '').replace(/[,.\s]+$/, '').trim();
+                // 7. Expand Known Acronyms & Assign Document Type
+                const upperContainer = container.toUpperCase();
+                let matchedAcronym = null;
+                if (leadingVenueTag) {
+                    const cleanTag = leadingVenueTag.replace(/’\d+|'\d+|\d+/g, '').trim().toUpperCase();
+                    if (VENUE_DICTIONARY[cleanTag]) {
+                        matchedAcronym = VENUE_DICTIONARY[cleanTag];
+                        container = matchedAcronym.name;
+                        entryType = matchedAcronym.type;
+                    } else {
+                        container = leadingVenueTag;
                         entryType = 'inproceedings';
                     }
-
-                    // Pattern 1: Handles Volume + optional (Issue) + Pages / Alphanumeric article ID
-                    // Matches both comma-separated and space-separated volume:
-                    // e.g. "Systems 44, 2897-2910", "National Science Review, 11(5), nwae066", "Frontiers in neuroscience, 15, 615279"
-                    const volIssuePageRegex = /(?:,\s*|\s+)(\d{1,4})\s*(?:\(([^)]+)\))?\s*[:,\s]\s*(?:(?:pp\.?|pages?)\s*)?([A-Za-z0-9\-\–_]+)\.?$/i;
-                    let matchVIP = container.match(volIssuePageRegex);
-
-                    if (matchVIP) {
-                        volume = matchVIP[1];
-                        if (matchVIP[2]) number = matchVIP[2].trim();
-                        pages = matchVIP[3].trim();
-                        container = container.replace(matchVIP[0], '');
-                    } else {
-                        // Pattern 2: Volume + Issue only, e.g., ", 11(5)"
-                        let volIssueMatch = container.match(/(?:,\s*|\s+)(\d{1,4})\s*\(([^)]+)\)\.?$/);
-                        if (volIssueMatch) {
-                            volume = volIssueMatch[1];
-                            number = volIssueMatch[2].trim();
-                            container = container.replace(volIssueMatch[0], '');
-                        } else {
-                            // Pattern 3: Explicit keywords "vol. 44", "no. 5", "pp. 2897-2910"
-                            let singleVolMatch = container.match(/\b(?:vol\.?|volume)\s*(\d+)/i);
-                            if (singleVolMatch) volume = singleVolMatch[1];
-                            let singleNoMatch = container.match(/\b(?:no\.?|issue|number)\s*([A-Za-z0-9]+)/i);
-                            if (singleNoMatch) number = singleNoMatch[1];
-                            let singlePageMatch = container.match(/\b(?:pp\.?|pages?)\s*([A-Za-z0-9\-\–]+)/i);
-                            if (singlePageMatch) pages = singlePageMatch[1];
-
-                            // Clean explicit tokens from container
-                            container = container
-                                .replace(/\b(?:vol\.?|volume)\s*\d+/gi, '')
-                                .replace(/\b(?:no\.?|issue|number)\s*[A-Za-z0-9]+/gi, '')
-                                .replace(/\b(?:pp\.?|pages?)\s*[A-Za-z0-9\-\–]+/gi, '');
+                } else {
+                    for (let [acronym, def] of Object.entries(VENUE_DICTIONARY)) {
+                        if (upperContainer === acronym || upperContainer.startsWith(acronym + ',') || upperContainer.startsWith(acronym + ' ')) {
+                            matchedAcronym = def;
+                            container = def.name;
+                            entryType = def.type;
+                            break;
                         }
                     }
-
-                    // Clean residual markers from container
-                    container = container
-                        .replace(/^In\s+Proceedings\s+of\s+(the\s+)?/i, '')
-                        .replace(/^In\s*:?\s+/i, '')
-                        .replace(/,\s*\d{4}\.?$/, '')
-                        .replace(/[,\.\s]+$/, '')
-                        .trim();
                 }
-
-                // Final Cleanups
-                title = (title || 'Untitled')
-                    .replace(/^["'\(]+|["'\)]+$/g, '')
-                    .replace(/^[0-9]{4}\)\.?\s*/, '')
-                    .replace(/[,\.]\s*$/, '')
-                    .trim();
-
-                if (authors.length === 0) {
-                    authors = ['Author, Unknown'];
+                if (!matchedAcronym && !leadingVenueTag) {
+                    const lowerCont = container.toLowerCase();
+                    if (lowerCont.includes('proceedings') || lowerCont.includes('conference') || lowerCont.includes('symposium') || lowerCont.includes('workshop') || lowerCont.includes('congress')) {
+                        entryType = 'inproceedings';
+                    } else if (lowerCont.includes('chapter') || lowerCont.includes('incollection')) {
+                        entryType = 'incollection';
+                    } else if (lowerCont.includes('book') || lowerCont.includes('press')) {
+                        entryType = 'book';
+                    } else {
+                        entryType = 'article';
+                    }
                 }
-
                 let rec = {
                     entryType: entryType,
                     citationKey: '',
-                    title: title,
-                    authors: authors,
-                    journal: entryType === 'article' ? (container || 'Academic Journal') : '',
-                    booktitle: entryType === 'inproceedings' ? (container || 'Conference Proceedings') : '',
+                    title: sanitizeTitle(title),
+                    authors: authors.length > 0 ? authors : ["Unknown Author"],
+                    journal: entryType === 'article' ? container : '',
+                    booktitle: (entryType === 'inproceedings' || entryType === 'incollection') ? container : '',
                     year: year,
                     volume: volume,
                     number: number,
                     pages: pages,
                     doi: doi,
-                    url: '',
-                    note: ''
+                    url: url,
+                    note: noteParts.join('; ')
                 };
-
                 rec.citationKey = generateCitationKey(rec, idx);
                 records.push(sanitizeRecord(rec, idx));
             });
-
             return records;
         }
 
-        // Author Normalizer -> "LastName, Initials and LastName, Initials"
-        function parseAuthors(raw) {
-            if (!raw) return ['Unknown, Author'];
-            let cleaned = raw
-                .replace(/^(\d+[\.\)]|\[\d+\])\s*/, '')
-                .replace(/\(Eds?\.?\)/i, '')
-                .replace(/&/g, ',')
-                .replace(/\band\b/gi, ',')
-                .trim();
-
-            let tokens = cleaned.split(/[,;]/).map(t => t.trim()).filter(Boolean);
+        function parseAuthorsList(authorStr) {
+            if (!authorStr) return [];
+            let str = authorStr.replace(/^[\d.\-\s]+/, '').replace(/&/g, ',').replace(/\band\b/gi, ',').trim();
+            str = str.replace(/[\†\*]/g, '').trim();
+            let tokens = str.split(/[;,]/).map(t => t.trim()).filter(Boolean);
             let authors = [];
-
             for (let i = 0; i < tokens.length; i++) {
                 let token = tokens[i];
-                if (i + 1 < tokens.length && /^[A-Z](\.[A-Z]?)*\.?$/.test(tokens[i + 1])) {
-                    authors.push(`${token}, ${tokens[i + 1]}`);
-                    i++;
-                } else if (token.includes(' ')) {
-                    let parts = token.split(' ');
-                    if (parts.length === 2 && parts[1].length <= 3) {
-                        authors.push(`${parts[0]}, ${parts[1]}`);
-                    } else {
-                        authors.push(token);
-                    }
-                } else if (token.length > 1) {
+                if (token.length <= 1) continue;
+                if (/^[A-Z][\.\s]\*[A-Z]?[\.\s]\*$/.test(token) && authors.length > 0) {
+                    authors[authors.length - 1] = `${authors[authors.length - 1]}, ${token}`;
+                } else {
                     authors.push(token);
                 }
             }
+            return authors.length > 0 ? authors : [str];
+        }
 
-            return authors.length > 0 ? authors : [cleaned];
+        function sanitizeTitle(title) {
+            if (!title) return 'Untitled Publication';
+            return title
+                .replace(/^["'“‘\s]+|["'”’\s]+$/g, '')
+                .replace(/[.,;]+$/, '')
+                .trim();
+        }
+
+        function sanitizeRecord(rec, index) {
+            if (rec.doi) {
+                rec.doi = rec.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').trim();
+            }
+            if (rec.title) {
+                rec.title = escapeLatexChars(sanitizeTitle(rec.title));
+            }
+            if (rec.journal) rec.journal = escapeLatexChars(rec.journal);
+            if (rec.booktitle) rec.booktitle = escapeLatexChars(rec.booktitle);
+            if (rec.publisher) rec.publisher = escapeLatexChars(rec.publisher);
+            if (rec.note) rec.note = escapeLatexChars(rec.note);
+            if (!rec.citationKey) {
+                rec.citationKey = generateCitationKey(rec, index);
+            }
+            return rec;
+        }
+
+        function escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function escapeLatexChars(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '\\&')
+                .replace(/%/g, '\\%')
+                .replace(/\$/g, '\\$')
+                .replace(/#/g, '\\#')
+                .replace(/_/g, '\\_');
+        }
+
+        function generateCitationKey(rec, index = 0) {
+            let authorPart = 'Author';
+            if (rec.authors && rec.authors.length > 0) {
+                const first = rec.authors[0];
+                const match = first.split(',')[0].replace(/[^a-zA-Z]/g, '');
+                if (match) authorPart = match;
+            }
+            const yearPart = rec.year ? rec.year.replace(/[^0-9]/g, '') : new Date().getFullYear().toString();
+            let keywordPart = '';
+            if (rec.title) {
+                const words = rec.title.split(/\s+/).filter(w => w.length > 3 && !['with','from','that','this','into','using'].includes(w.toLowerCase()));
+                if (words.length > 0) {
+                    keywordPart = words[0].replace(/[^a-zA-Z0-9]/g, '');
+                    keywordPart = keywordPart.charAt(0).toUpperCase() + keywordPart.slice(1).toLowerCase();
+                }
+            }
+            return `${authorPart}${yearPart}${keywordPart || 'Doc'}`;
         }
 
         async function fetchWithRetry(url, options, maxRetries = 3) {
@@ -963,68 +1121,9 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
             }
         }
 
-        function sanitizeRecord(rec, index) {
-            if (rec.doi) {
-                rec.doi = rec.doi.replace(/^https?:\/\/(dx\.)?doi\.org\//i, '').trim();
-            }
-            if (rec.volume) {
-                let volMatch = rec.volume.match(/^[0-9]+/);
-                rec.volume = volMatch ? volMatch[0] : rec.volume.replace(/[^0-9]/g, '');
-            }
-            if (rec.number) {
-                rec.number = rec.number.replace(/[^0-9]/g, '');
-            }
-            if (!rec.citationKey) {
-                rec.citationKey = generateCitationKey(rec, index);
-            }
-            if (rec.title) {
-                rec.title = rec.title
-                    .replace(/^["'“‘’„“”\(]+|["'“‘’„“”\)]+$/g, '')
-                    .replace(/^[0-9]{4}\)\.?\s*/, '')
-                    .replace(/[,\.]\s*$/, '')
-                    .trim();
-            }
-            rec.title = escapeLatexChars(rec.title);
-            if (rec.journal) rec.journal = escapeLatexChars(rec.journal);
-            if (rec.booktitle) rec.booktitle = escapeLatexChars(rec.booktitle);
-            if (rec.publisher) rec.publisher = escapeLatexChars(rec.publisher);
-            return rec;
-        }
-
-        function escapeLatexChars(str) {
-            if (!str) return '';
-            return str
-                .replace(/&/g, '\\&')
-                .replace(/%/g, '\\%')
-                .replace(/\$/g, '\\$')
-                .replace(/#/g, '\\#')
-                .replace(/\_/g, '\\_');
-        }
-
-        function generateCitationKey(rec, index = 0) {
-            let authorPart = 'Anon';
-            if (rec.authors && rec.authors.length > 0) {
-                const firstAuthor = rec.authors[0];
-                const lastNameMatch = firstAuthor.split(',')[0].trim().replace(/[^a-zA-Z]/g, '');
-                if (lastNameMatch) authorPart = lastNameMatch;
-            }
-            const yearPart = rec.year ? rec.year.replace(/[^0-9]/g, '') : '2024';
-            let keywordPart = '';
-            if (rec.title) {
-                const cleanWords = rec.title
-                    .replace(/^[0-9\s\(\)\.-]+/, '')
-                    .split(/\s+/)
-                    .map(w => w.replace(/[^a-zA-Z]/g, ''))
-                    .filter(w => w.length > 3 && !['with', 'from', 'that', 'this', 'into', 'using'].includes(w.toLowerCase()));
-                if (cleanWords.length > 0) {
-                    keywordPart = cleanWords[0].charAt(0).toUpperCase() + cleanWords[0].slice(1).toLowerCase();
-                }
-            }
-            return `${authorPart}${yearPart}${keywordPart || 'Paper'}`;
-        }
-
+        // Table Rendering & Pagination
         function getFilteredRecords() {
-            return state.records.filter((rec) => {
+            return state.records.filter((rec, index) => {
                 const matchesSearch = !state.filterQuery ||
                     (rec.title && rec.title.toLowerCase().includes(state.filterQuery)) ||
                     (rec.authors && rec.authors.join(' ').toLowerCase().includes(state.filterQuery)) ||
@@ -1039,34 +1138,28 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
             const emptyState = document.getElementById('emptyRecordsState');
             tbody.innerHTML = '';
             const filtered = getFilteredRecords();
-
             document.getElementById('recordCountBadge').innerText = state.records.length;
-            const statusDot = document.getElementById('db-status-dot');
-            const statusText = document.getElementById('db-status-text');
-            if (state.records.length > 0) {
-                statusDot.className = "w-2 h-2 mr-1.5 bg-emerald-500 rounded-full";
-                statusText.innerText = `${state.records.length} records parsed`;
-            } else {
-                statusDot.className = "w-2 h-2 mr-1.5 bg-slate-400 rounded-full";
-                statusText.innerText = "No records loaded";
-            }
 
             document.getElementById('stat-total').innerText = state.records.length;
-            document.getElementById('stat-valid').innerText = state.records.filter(r => r.title && r.authors && r.authors.length && r.year).length;
-            document.getElementById('stat-missing-doi').innerText = state.records.filter(r => !r.doi && !r.url).length;
-            document.getElementById('stat-non-indexed').innerText = state.records.filter(r => r.entryType === 'misc' || r.entryType === 'unpublished').length;
+            const validCount = state.records.filter(r => r.title && r.authors && r.authors.length && r.year).length;
+            document.getElementById('stat-valid').innerText = validCount;
+
+            // Evaluate if all filtered items are selected and update header checkbox
+            const allVisibleSelected = filtered.length > 0 && filtered.every(rec => state.selectedIndices.has(state.records.indexOf(rec)));
+            document.getElementById('header-select-all').checked = allVisibleSelected;
+            document.getElementById('select-all-cb').checked = allVisibleSelected;
 
             if (filtered.length === 0) {
                 emptyState.classList.remove('hidden');
-                updatePaginationUI(0, 0, 0);
+                updatePaginationUI(0, 0, 0, 1);
+                document.getElementById('selected-count').innerText = 0;
                 return;
             }
-
             emptyState.classList.add('hidden');
             const totalItems = filtered.length;
             const totalPages = Math.ceil(totalItems / state.pageSize) || 1;
             if (state.currentPage > totalPages) state.currentPage = totalPages;
-
+            if (state.currentPage < 1) state.currentPage = 1;
             const startIdx = (state.currentPage - 1) * state.pageSize;
             const endIdx = Math.min(startIdx + state.pageSize, totalItems);
             const pageItems = filtered.slice(startIdx, endIdx);
@@ -1075,22 +1168,21 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 const realIndex = state.records.indexOf(rec);
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition-colors group border-b border-slate-200 cursor-pointer";
-                tr.ondblclick = () => window.editRecord(realIndex);
-
+                tr.onclick = () => window.editRecord(realIndex);
                 const typeBadgeClass = getTypeBadgeColor(rec.entryType);
-                const authorDisplay = rec.authors ? rec.authors.join(' and ') : 'Unknown Authors';
-                const containerName = rec.journal || rec.booktitle || rec.publisher || 'N/A';
+                const authorDisplay = rec.authors ? rec.authors.join('; ') : 'Unknown Author';
+                const containerName = rec.journal || rec.booktitle || rec.publisher || rec.note || 'N/A';
                 const isSelected = state.selectedIndices.has(realIndex);
 
                 tr.innerHTML = `
-                    <td class="p-3.5 text-center"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.toggleSelectRecord(${realIndex}, this.checked)" onclick="event.stopPropagation()"></td>
+                    <td class="p-3.5 text-center"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="window.toggleSelectRecord(${realIndex}, this.checked)" onclick="event.stopPropagation()" class="rounded text-hkust-navy focus:ring-hkust-navy"></td>
                     <td class="p-3.5 text-center">
-                        <span class="px-2.5 py-1 rounded text-[10px] font-bold border ${typeBadgeClass}">@${rec.entryType || 'misc'}</span>
+                        <span class="px-2.5 py-1 rounded text-[10px] font-bold border ${typeBadgeClass}">@${rec.entryType || 'article'}</span>
                     </td>
                     <td class="p-3.5 font-mono text-[11px] text-hkust-blue font-semibold">${rec.citationKey}</td>
                     <td class="p-3.5 max-w-md">
                         <p class="font-semibold text-slate-800 line-clamp-2">${rec.title || 'Untitled'}</p>
-                        <p class="text-[11px] text-slate-500 italic line-clamp-1 mt-0.5">${containerName}${rec.volume ? `, Vol. ${rec.volume}` : ''}${rec.number ? `(${rec.number})` : ''}${rec.pages ? `, pp. ${rec.pages}` : ''}</p>
+                        <p class="text-[11px] text-slate-500 italic line-clamp-1 mt-0.5">${containerName}</p>
                     </td>
                     <td class="p-3.5 text-slate-600 max-w-xs">
                         <p class="line-clamp-2 text-[11px]">${authorDisplay}</p>
@@ -1110,8 +1202,8 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 `;
                 tbody.appendChild(tr);
             });
-
             updatePaginationUI(startIdx + 1, endIdx, totalItems, totalPages);
+            document.getElementById('selected-count').innerText = state.selectedIndices.size;
             lucide.createIcons();
         }
 
@@ -1127,70 +1219,143 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
         }
 
         function updatePaginationUI(start, end, total, totalPages) {
-            document.getElementById('page-start-idx').innerText = start;
+            document.getElementById('page-start-idx').innerText = total > 0 ? start : 0;
             document.getElementById('page-end-idx').innerText = end;
             document.getElementById('page-total-count').innerText = total;
-            document.getElementById('current-page-num').innerText = state.currentPage;
-            document.getElementById('total-pages-num').innerText = totalPages || 1;
-            document.getElementById('btn-prev-page').disabled = state.currentPage <= 1;
-            document.getElementById('btn-next-page').disabled = state.currentPage >= totalPages;
+
+            const nav = document.getElementById('pagination-nav');
+            if (!nav) return;
+            nav.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // Container for the pagination style
+            const container = document.createElement('div');
+            container.className = 'flex items-center space-x-3 text-slate-700 font-medium text-[13px]';
+
+            // Previous Button
+            const prevBtn = document.createElement('button');
+            prevBtn.innerText = 'Previous';
+            prevBtn.disabled = state.currentPage === 1;
+            prevBtn.className = 'px-3.5 py-1.5 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition';
+            prevBtn.onclick = () => goToPage(state.currentPage - 1);
+            container.appendChild(prevBtn);
+
+            // "Page" text
+            const pageText = document.createElement('span');
+            pageText.innerText = 'Page';
+            container.appendChild(pageText);
+
+            // Select Dropdown
+            const selectWrapper = document.createElement('div');
+            selectWrapper.className = 'relative';
+            const select = document.createElement('select');
+            select.className = 'appearance-none bg-white border border-slate-300 rounded-md pl-3.5 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-hkust-blue cursor-pointer font-semibold text-slate-700';
+            select.onchange = (e) => goToPage(parseInt(e.target.value));
+
+            for (let i = 1; i <= totalPages; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.innerText = i;
+                if (i === state.currentPage) opt.selected = true;
+                select.appendChild(opt);
+            }
+            selectWrapper.appendChild(select);
+
+            // Custom dropdown arrow for select (Lucide icon chevron-down)
+            const chevron = document.createElement('div');
+            chevron.className = 'pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500';
+            chevron.innerHTML = '<i data-lucide="chevron-down" class="w-4 h-4"></i>';
+            selectWrapper.appendChild(chevron);
+
+            container.appendChild(selectWrapper);
+
+            // "of X" text
+            const ofText = document.createElement('span');
+            ofText.innerText = `of ${totalPages}`;
+            container.appendChild(ofText);
+
+            // Next Button
+            const nextBtn = document.createElement('button');
+            nextBtn.innerText = 'Next';
+            nextBtn.disabled = state.currentPage === totalPages;
+            nextBtn.className = 'px-3.5 py-1.5 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition';
+            nextBtn.onclick = () => goToPage(state.currentPage + 1);
+            container.appendChild(nextBtn);
+
+            nav.appendChild(container);
+            lucide.createIcons();
         }
 
-        function changePage(delta) {
-            state.currentPage += delta;
+        function goToPage(pageNum) {
+            if (isNaN(pageNum) || pageNum < 1) return;
+            const totalPages = Math.ceil(getFilteredRecords().length / state.pageSize) || 1;
+            if (pageNum > totalPages) return;
+
+            state.currentPage = pageNum;
             renderRecordsTable();
         }
-        window.changePage = changePage;
+        window.goToPage = goToPage;
 
         function applyFilters() {
             state.filterQuery = document.getElementById('recordSearchInput').value.toLowerCase().trim();
             state.filterType = document.getElementById('typeFilterSelect').value;
             state.currentPage = 1;
+            // Clear selections when filter changes
+            state.selectedIndices.clear();
             renderRecordsTable();
         }
         window.applyFilters = applyFilters;
 
         function toggleSelectRecord(index, checked) {
-            if (checked) state.selectedIndices.add(index);
-            else state.selectedIndices.delete(index);
+            if (checked) {
+                state.selectedIndices.add(index);
+            } else {
+                state.selectedIndices.delete(index);
+            }
             document.getElementById('selected-count').innerText = state.selectedIndices.size;
+            // Sync header checkbox
+            const filtered = getFilteredRecords();
+            const allVisibleSelected = filtered.every(rec => state.selectedIndices.has(state.records.indexOf(rec)));
+            document.getElementById('header-select-all').checked = allVisibleSelected && filtered.length > 0;
+            document.getElementById('select-all-cb').checked = allVisibleSelected && filtered.length > 0;
         }
         window.toggleSelectRecord = toggleSelectRecord;
 
         function toggleSelectAll(checked) {
-            state.selectedIndices.clear();
+            const filteredRecords = getFilteredRecords();
+            const filteredIndices = filteredRecords.map(rec => state.records.indexOf(rec));
             if (checked) {
-                state.records.forEach((_, idx) => state.selectedIndices.add(idx));
+                filteredIndices.forEach(index => state.selectedIndices.add(index));
+            } else {
+                filteredIndices.forEach(index => state.selectedIndices.delete(index));
             }
             document.getElementById('selected-count').innerText = state.selectedIndices.size;
+            // Re-render to update checkboxes in rows
             renderRecordsTable();
         }
         window.toggleSelectAll = toggleSelectAll;
-
-        function batchFormatKeys() {
-            state.records.forEach((rec, idx) => {
-                rec.citationKey = generateCitationKey(rec, idx);
-            });
-            renderRecordsTable();
-            updateBibTeXView();
-            showToast('Regenerated citation keys according to active pattern.', 'info');
-        }
-        window.batchFormatKeys = batchFormatKeys;
 
         function clearAllRecords() {
             if (state.records.length === 0) return;
             state.records = [];
             state.selectedIndices.clear();
+            state.currentPage = 1;
+            state.filterQuery = '';
+            state.filterType = 'all';
+            document.getElementById('recordSearchInput').value = '';
+            updateDocumentTypeFilterOptions();
             renderRecordsTable();
             updateBibTeXView();
             showToast('Cleared all publication records.', 'slate');
         }
         window.clearAllRecords = clearAllRecords;
 
+        // BibTeX Generation and Formatting
         function updateBibTeXView() {
             const display = document.getElementById('bibtexCodeDisplay');
             if (state.records.length === 0) {
-                display.innerText = `% No publication records available.\n% Extract publications in Step 1 to generate BibTeX output.`;
+                display.innerText = `% No publication records available.\n% Paste CV or citations in Step 1 to generate BibTeX code.`;
                 document.getElementById('bibtexStatsBadge').innerText = '0 records | 0 lines';
                 return;
             }
@@ -1204,7 +1369,6 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
             const key = rec.citationKey || generateCitationKey(rec);
             const type = rec.entryType || 'article';
             let fields = [];
-
             if (rec.authors && rec.authors.length > 0) {
                 fields.push(`  author    = {${rec.authors.join(' and ')}}`);
             }
@@ -1226,7 +1390,6 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
             if (rec.doi) fields.push(`  doi       = {${rec.doi}}`);
             if (rec.url) fields.push(`  url       = {${rec.url}}`);
             if (rec.note) fields.push(`  note      = {${rec.note}}`);
-
             return `@${type}{${key},\n${fields.join(',\n')}\n}`;
         }
 
@@ -1237,17 +1400,17 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 showToast('No BibTeX code to copy.', 'error');
                 return;
             }
-            const textarea = document.createElement('textarea');
-            textarea.value = code;
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
+            navigator.clipboard.writeText(code).then(() => {
                 showToast('BibTeX code copied to clipboard!', 'success');
-            } catch (err) {
-                showToast('Copy failed. Please select text manually.', 'error');
-            }
-            document.body.removeChild(textarea);
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('BibTeX code copied to clipboard!', 'success');
+            });
         }
         window.copyBibTeXToClipboard = copyBibTeXToClipboard;
 
@@ -1279,7 +1442,7 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 'Entry Type': r.entryType,
                 'Citation Key': r.citationKey,
                 'Title': r.title,
-                'Authors': r.authors ? r.authors.join(' and ') : '',
+                'Authors': r.authors ? r.authors.join('; ') : '',
                 'Journal / Container': r.journal || r.booktitle || '',
                 'Year': r.year,
                 'Volume': r.volume || '',
@@ -1287,7 +1450,6 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 'Pages': r.pages || '',
                 'DOI': r.doi || '',
                 'URL': r.url || '',
-                'Publisher': r.publisher || '',
                 'Note': r.note || ''
             }));
 
@@ -1311,29 +1473,40 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
         }
         window.exportRecords = exportRecords;
 
+        // Modal Functions
         function addNewRecord() {
-            const newRec = {
-                entryType: 'article',
-                citationKey: `NewRecord${Date.now().toString().slice(-4)}`,
-                title: 'New Publication Entry',
-                authors: ['LastName, FirstName'],
-                journal: 'Journal of Academic Research',
-                year: '2024'
-            };
-            state.records.unshift(newRec);
-            renderRecordsTable();
-            editRecord(0);
+            document.getElementById('editRecordIndex').value = '-1';
+            document.getElementById('modalTitle').innerText = 'Add New Publication Entry';
+            document.getElementById('editEntryType').value = 'article';
+            document.getElementById('editCitationKey').value = `NewRecord${Date.now().toString().slice(-4)}`;
+            document.getElementById('editTitle').value = '';
+            document.getElementById('editAuthors').value = '';
+            document.getElementById('editContainer').value = '';
+            document.getElementById('editPublisher').value = '';
+            document.getElementById('editYear').value = new Date().getFullYear().toString();
+            document.getElementById('editVolume').value = '';
+            document.getElementById('editNumber').value = '';
+            document.getElementById('editPages').value = '';
+            document.getElementById('editDoi').value = '';
+            document.getElementById('editUrl').value = '';
+            document.getElementById('editNote').value = '';
+
+            const modal = document.getElementById('recordModal');
+            modal.classList.remove('hidden');
+            lucide.createIcons();
         }
         window.addNewRecord = addNewRecord;
 
         function editRecord(index) {
             const rec = state.records[index];
             if (!rec) return;
+
             document.getElementById('editRecordIndex').value = index;
+            document.getElementById('modalTitle').innerText = 'Edit Publication Metadata';
             document.getElementById('editEntryType').value = rec.entryType || 'article';
             document.getElementById('editCitationKey').value = rec.citationKey || '';
             document.getElementById('editTitle').value = rec.title || '';
-            document.getElementById('editAuthors').value = rec.authors ? rec.authors.join(' and ') : '';
+            document.getElementById('editAuthors').value = rec.authors ? rec.authors.join('; ') : '';
             document.getElementById('editContainer').value = rec.journal || rec.booktitle || '';
             document.getElementById('editPublisher').value = rec.publisher || '';
             document.getElementById('editYear').value = rec.year || '';
@@ -1356,22 +1529,22 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
         window.closeRecordModal = closeRecordModal;
 
         function saveRecordModal() {
-            const index = parseInt(document.getElementById('editRecordIndex').value);
-            if (isNaN(index) || !state.records[index]) return;
+            const rawIndex = document.getElementById('editRecordIndex').value;
+            const index = parseInt(rawIndex);
             const entryType = document.getElementById('editEntryType').value;
             const containerVal = document.getElementById('editContainer').value.trim();
             const authorsRaw = document.getElementById('editAuthors').value.trim();
-            let authorsArr = authorsRaw ? authorsRaw.split(/\band\b/i).map(a => a.trim()).filter(Boolean) : [];
+            let authorsArr = authorsRaw ? authorsRaw.split(/[;]|\band\b/i).map(a => a.trim()).filter(Boolean) : [];
 
-            state.records[index] = {
+            const recordData = {
                 entryType: entryType,
                 citationKey: document.getElementById('editCitationKey').value.trim(),
-                title: document.getElementById('editTitle').value.trim(),
-                authors: authorsArr,
+                title: document.getElementById('editTitle').value.trim() || 'Untitled Publication',
+                authors: authorsArr.length > 0 ? authorsArr : ['Unknown Author'],
                 journal: entryType === 'article' ? containerVal : '',
                 booktitle: (entryType === 'inproceedings' || entryType === 'incollection') ? containerVal : '',
                 publisher: document.getElementById('editPublisher').value.trim(),
-                year: document.getElementById('editYear').value.trim(),
+                year: document.getElementById('editYear').value.trim() || new Date().getFullYear().toString(),
                 volume: document.getElementById('editVolume').value.trim(),
                 number: document.getElementById('editNumber').value.trim(),
                 pages: document.getElementById('editPages').value.trim(),
@@ -1380,22 +1553,40 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 note: document.getElementById('editNote').value.trim()
             };
 
+            if (index === -1) {
+                state.records.unshift(sanitizeRecord(recordData, 0));
+                showToast('New publication record created.', 'success');
+            } else if (!isNaN(index) && state.records[index]) {
+                state.records[index] = sanitizeRecord(recordData, index);
+                showToast('Publication record updated successfully.', 'success');
+            }
+
             closeRecordModal();
+            state.currentPage = 1;
+            updateDocumentTypeFilterOptions();
             renderRecordsTable();
             updateBibTeXView();
-            showToast('Publication record updated successfully.', 'success');
         }
         window.saveRecordModal = saveRecordModal;
 
         function deleteRecord(index) {
             state.records.splice(index, 1);
+            state.selectedIndices.delete(index);
+            updateDocumentTypeFilterOptions();
             renderRecordsTable();
             updateBibTeXView();
             showToast('Record removed.', 'slate');
         }
         window.deleteRecord = deleteRecord;
 
+        // Settings Modal Handlers
         function openSettingsModal() {
+            const input = document.getElementById('customApiKeyInput');
+            if (input) input.value = state.customApiKey || '';
+
+            const modelSelect = document.getElementById('apiModelSelect');
+            if (modelSelect) modelSelect.value = state.apiModel || 'gemini-1.5-flash';
+
             document.getElementById('settingsModal').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -1408,20 +1599,27 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
 
         function saveSettings() {
             const key = document.getElementById('customApiKeyInput').value.trim();
+            const model = document.getElementById('apiModelSelect').value;
+
             state.customApiKey = key;
+            state.apiModel = model;
+
             if (key) {
                 localStorage.setItem('bibextractor_custom_key', key);
             } else {
                 localStorage.removeItem('bibextractor_custom_key');
             }
+
+            localStorage.setItem('bibextractor_api_model', model);
+
+            updateApiKeyBadge();
             closeSettingsModal();
-            showToast('API Settings saved.', 'success');
+            showToast(key ? `API key saved. Using ${model}.` : 'API key cleared. Local parsing active.', 'success');
         }
         window.saveSettings = saveSettings;
 
-        function showProgressModal(show, message = '') {
+        function showProgressModal(show) {
             const modal = document.getElementById('modal-progress');
-            if (message) document.getElementById('loadingProgressMsg').innerText = message;
             if (show) modal.classList.remove('hidden');
             else modal.classList.add('hidden');
             lucide.createIcons();
@@ -1433,6 +1631,7 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
             const toast = document.createElement('div');
             let bgClass = 'bg-white border-slate-200 text-slate-800 shadow-xl';
             let iconClass = 'info text-hkust-blue';
+
             if (type === 'success') {
                 bgClass = 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-xl';
                 iconClass = 'check-circle-2 text-emerald-600';
@@ -1443,6 +1642,7 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                 bgClass = 'bg-slate-100 border-slate-300 text-slate-700 shadow-xl';
                 iconClass = 'info text-slate-500';
             }
+
             toast.className = `p-3.5 rounded-xl border ${bgClass} text-xs flex items-center justify-between gap-3 pointer-events-auto transition-all`;
             toast.innerHTML = `
                 <div class="flex items-center gap-2.5">
@@ -1453,8 +1653,10 @@ Parse the raw CV publication text into clean JSON BibTeX records following these
                     <i data-lucide="x" class="w-3.5 h-3.5"></i>
                 </button>
             `;
+
             container.appendChild(toast);
             lucide.createIcons();
+
             setTimeout(() => {
                 if (toast.parentElement) toast.remove();
             }, 4000);
